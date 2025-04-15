@@ -1,6 +1,9 @@
-set(TARGET_NAME common-lib)
+cmake_minimum_required(VERSION 3.16)
 
+set(TARGET_NAME common-lib)
 set(CMAKE_CXX_STANDARD 17)
+
+project(${TARGET_NAME})
 
 if (WIN32)
     add_definitions(-DWINDOWS)
@@ -19,6 +22,11 @@ if (WIN32)
     endif()
 elseif (UNIX)
     add_definitions(-DLINUX)
+endif()
+
+if(DEFINED GTEST_BASE_DIR)
+    message("GTEST_BASE_DIR = ${GTEST_BASE_DIR}")
+    set(GTEST_ENABLED ON)
 endif()
 
 set(INCLUDES ${CMAKE_CURRENT_LIST_DIR}/include
