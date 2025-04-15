@@ -1,6 +1,20 @@
-set(TARGET_NAME common-lib)
+cmake_minimum_required(VERSION 3.16)
 
+set(TARGET_NAME common-lib)
 set(CMAKE_CXX_STANDARD 17)
+
+project(${TARGET_NAME})
+
+# GoogleTest ############################################
+set(GTEST_ROOT ${CMAKE_CURRENT_LIST_DIR}/libs/googletest)
+set(GTEST_INCLUDES ${GTEST_ROOT}/googletest/include
+                   ${GTEST_ROOT}/googlemock/include)
+set(GTEST_LINKS ${CMAKE_CURRENT_BINARY_DIR}/lib)
+
+message(STATUS GTEST_ROOT=${GTEST_ROOT})
+message(STATUS GTEST_INCLUDES=${GTEST_INCLUDES})
+message(STATUS GTEST_LINKS=${GTEST_LINKS})
+##########################################################
 
 if (WIN32)
     add_definitions(-DWINDOWS)
@@ -11,8 +25,8 @@ if (WIN32)
         message("PYTHON_BASE_DIR = ${PYTHON_BASE_DIR}")
         set(PYTHON_BUILD ON)
         set(PYBIND_BASE_DIR ${PYTHON_BASE_DIR}/Lib/site-packages/pybind11)
-        set(CMAKE_PREFIX_PATH "${PYBIND_BASE_DIR}/share/cmake/pybind11" 
-                            ${CMAKE_PREFIX_PATH})
+        set(CMAKE_PREFIX_PATH ${PYBIND_BASE_DIR}/share/cmake/pybind11
+                              ${CMAKE_PREFIX_PATH})
         
         find_package(pybind11 REQUIRED)
         find_package(Python3 COMPONENTS Interpreter Development)
@@ -39,6 +53,7 @@ target_include_directories(${TARGET_NAME}
 target_link_directories(${TARGET_NAME}
                         PRIVATE ${LINKS})
 
+# pybind11 ################################################
 if(PYTHON_BUILD)
     set(PY_TARGET_NAME py_common_lib)
 
@@ -66,7 +81,7 @@ if(PYTHON_BUILD)
     target_link_libraries(${PY_TARGET_NAME} 
                           PRIVATE ${DEPENDENCIES})
 endif()
+###########################################################
 
-if(GTEST_ENABLED)
-    add_subdirectory(test)
-endif()
+add_subdirectory(libs)
+add_subdirectory(test)
