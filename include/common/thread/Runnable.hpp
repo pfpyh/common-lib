@@ -29,6 +29,8 @@ SOFTWARE.
 #include "common/Exception.hpp"
 #include "common/NonCopyable.hpp"
 
+#include <vector>
+
 namespace common
 {
 /**

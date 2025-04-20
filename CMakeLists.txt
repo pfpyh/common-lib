@@ -5,17 +5,6 @@ set(CMAKE_CXX_STANDARD 17)
 
 project(${TARGET_NAME})
 
-# GoogleTest ############################################
-set(GTEST_ROOT ${CMAKE_CURRENT_LIST_DIR}/libs/googletest)
-set(GTEST_INCLUDES ${GTEST_ROOT}/googletest/include
-                   ${GTEST_ROOT}/googlemock/include)
-set(GTEST_LINKS ${CMAKE_CURRENT_BINARY_DIR}/lib)
-
-message(STATUS GTEST_ROOT=${GTEST_ROOT})
-message(STATUS GTEST_INCLUDES=${GTEST_INCLUDES})
-message(STATUS GTEST_LINKS=${GTEST_LINKS})
-##########################################################
-
 if (WIN32)
     add_definitions(-DWINDOWS)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebug")
@@ -44,6 +33,11 @@ elseif (UNIX)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+endif()
+
+if(DEFINED GTEST_BASE_DIR)
+    message("GTEST_BASE_DIR = ${GTEST_BASE_DIR}")
+    set(GTEST_ENABLED ON)
 endif()
 
 set(INCLUDES ${CMAKE_CURRENT_LIST_DIR}/include
