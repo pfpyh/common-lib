@@ -36,15 +36,16 @@ SOFTWARE.
 #include <tuple>
 #include <vector>
 #include <queue>
+#include <iostream>
 
 namespace common
 {
-class COMMON_LIB_API TaskExecutor final : public NonCopyable, 
-                                          public UniqueFactory<TaskExecutor>
+class TaskExecutor final : public NonCopyable,
+                           public Factory<TaskExecutor>
 {
-    friend class UniqueFactory<TaskExecutor>;
+    friend class Factory<TaskExecutor>;
 
-private :
+public :
     std::mutex _lock;
     std::condition_variable _cv;
     std::atomic<bool> _running = true;
@@ -52,19 +53,61 @@ private :
     std::queue<std::function<void()>> _tasks;
     std::vector<std::tuple<std::shared_ptr<Thread>, std::future<void>>> _workers;
 
-private :
-    explicit TaskExecutor(const uint32_t threadCount) noexcept;
-
-    static auto __create(const uint32_t threadCount) noexcept -> std::unique_ptr<TaskExecutor>
+public :
+    explicit TaskExecutor(uint32_t threadCount) noexcept
     {
-        return std::unique_ptr<TaskExecutor>(new TaskExecutor(threadCount));
+        _workers.reserve(threadCount);
+        for(uint32_t i = 0; i < threadCount; ++i)
+        {
+            auto worker = Thread::create();
+            auto future = worker->start([this]() mutable
+            {
+                while (true)
+                {
+                    std::function<void()> task;
+                    {
+                        std::unique_lock<std::mutex> lock(_lock);
+                        _cv.wait(lock, [this]() { 
+                            return !_running.load() || !_tasks.empty(); 
+                        });
+    
+                        if (!_running.load() && _tasks.empty()) { 
+                            break; 
+                        }
+    
+                        task = std::move(_tasks.front());
+                        _tasks.pop();
+                    }
+                    task();
+                }
+            });
+            _workers.push_back({worker, std::move(future)});
+        }
+    }
+
+    ~TaskExecutor() noexcept
+    {
+        if (_running.load()) { stop(); }
+    }
+
+private :
+    static auto __create(uint32_t threadCount) noexcept -> std::shared_ptr<TaskExecutor>
+    {
+        return std::shared_ptr<TaskExecutor>(new TaskExecutor(threadCount));
     }
 
 public :
-    ~TaskExecutor();
-
-public :
-    auto stop(const bool waitUntilDone = true) noexcept -> void;
+    auto stop() noexcept -> void
+    {
+        {
+            std::lock_guard<std::mutex> lock(_lock);
+            _running.store(false);
+        }
+    
+        _cv.notify_all();
+        for(auto& worker : _workers) { std::get<1>(worker).wait(); }
+        _workers.clear();
+    }
 
     template <typename ReturnType>
     auto load(std::function<ReturnType()> task) noexcept -> std::future<ReturnType>

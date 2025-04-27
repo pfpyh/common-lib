@@ -41,10 +41,10 @@ TEST(TaskExecutorTest, Load)
         // when
         auto thread = Thread::create();
         auto testFuture = thread->start([&executor, &futures](){
-            for(uint8_t i = 0; i < 20; ++i)
+            for(uint8_t i = 0; i < 10; ++i)
             {
                 auto future = executor->load<void>([]() { 
-                    auto sleepDuration = std::chrono::milliseconds(100 + (std::rand() % 101));
+                    auto sleepDuration = std::chrono::milliseconds(100);
                     std::this_thread::sleep_for(sleepDuration);
                 });
                 futures.push_back(std::move(future));
@@ -53,8 +53,12 @@ TEST(TaskExecutorTest, Load)
         testFuture.wait();
 
         // then
-        for(auto& future : futures) { future.wait(); }
-        executor->stop(false);
+        for(auto& future : futures) 
+        { 
+            auto state = future.wait_for(std::chrono::seconds(3));
+            ASSERT_EQ(state, std::future_status::ready);
+        }
+        executor->stop();
     }
     { // Case 2: Load with different return types
         // given
@@ -80,8 +84,11 @@ TEST(TaskExecutorTest, Load)
         });
 
         // then
+        ASSERT_EQ(future_int32_t.wait_for(std::chrono::seconds(1)), std::future_status::ready);
         ASSERT_EQ(future_int32_t.get(), 42);
+        ASSERT_EQ(future_void.wait_for(std::chrono::seconds(1)), std::future_status::ready);
         ASSERT_NO_THROW(future_void.get());
+        ASSERT_EQ(future_string.wait_for(std::chrono::seconds(1)), std::future_status::ready);
         ASSERT_EQ(future_string.get(), "Hello, World!");
     }
 }

@@ -16,7 +16,7 @@ namespace common
  * @tparam Args The types of arguments to be passed to the create function.
  */
 template <typename Derived>
-class COMMON_LIB_API Factory
+class Factory
 {
 public :
     /**
@@ -48,7 +48,7 @@ public :
  * @tparam Args The types of arguments to be passed to the create function.
  */
 template <typename Derived>
-class COMMON_LIB_API UniqueFactory
+class UniqueFactory
 {
 public :
     /**

@@ -9,7 +9,7 @@
 namespace common
 {
 template <typename... Args>
-class COMMON_LIB_API BaseObserver
+class BaseObserver
 {
 public :
     virtual ~BaseObserver() = default;
@@ -28,8 +28,8 @@ public :
  * @tparam Args The types of arguments to be passed to the onEvent function.
  */
 template <typename Derived, typename... Args>
-class COMMON_LIB_API Observer : public BaseObserver<Args...> 
-                              , public std::enable_shared_from_this<Observer<Derived, Args...>>
+class Observer : public BaseObserver<Args...> 
+               , public std::enable_shared_from_this<Observer<Derived, Args...>>
 {
 public :
     /**
@@ -79,7 +79,7 @@ public :
  * @tparam Args The types of arguments to be passed to the onEvent function.
  */
 template <typename... Args>
-class COMMON_LIB_API Subject
+class Subject
 {
 private :
     /**

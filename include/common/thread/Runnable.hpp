@@ -39,7 +39,7 @@ namespace common
  *
  * @note A derived class must implement the pure virtual function __work() to execute a task.
  */
-class COMMON_LIB_API Runnable : public NonCopyable
+class Runnable : public NonCopyable
 {
 private :
     std::promise<void> _promise;
@@ -111,7 +111,7 @@ protected :
  * @note A derived class must implement the pure virtual function __work() to execute a task.
  */
 template <typename DataType>
-class COMMON_LIB_API ActiveRunnable
+class ActiveRunnable
 {
 private :
     std::promise<void> _promise;

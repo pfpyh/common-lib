@@ -21,6 +21,13 @@ if (WIN32)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebug")
     #set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
+    foreach(OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES})
+        string(TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG_UPPER)
+        set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG_UPPER} ${CMAKE_BINARY_DIR}/bin/${OUTPUTCONFIG})
+        set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG_UPPER} ${CMAKE_BINARY_DIR}/lib/${OUTPUTCONFIG})
+        set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG_UPPER} ${CMAKE_BINARY_DIR}/lib/${OUTPUTCONFIG})
+    endforeach()
+
     if(DEFINED PYTHON_BASE_DIR)
         message("PYTHON_BASE_DIR = ${PYTHON_BASE_DIR}")
         set(PYTHON_BUILD ON)
@@ -33,6 +40,10 @@ if (WIN32)
     endif()
 elseif (UNIX)
     add_definitions(-DLINUX)
+
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 endif()
 
 set(INCLUDES ${CMAKE_CURRENT_LIST_DIR}/include
@@ -52,6 +63,9 @@ target_include_directories(${TARGET_NAME}
 
 target_link_directories(${TARGET_NAME}
                         PRIVATE ${LINKS})
+
+target_compile_definitions(${TARGET_NAME} 
+                           PRIVATE BUILDING_COMMON_LIB)
 
 # pybind11 ################################################
 if(PYTHON_BUILD)
