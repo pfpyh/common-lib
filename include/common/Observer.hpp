@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CommonHeader.hpp"
+#include "common/Factory.hpp"
 
 #include <vector>
 #include <memory>
@@ -29,9 +30,11 @@ public :
  */
 template <typename Derived, typename... Args>
 class Observer : public BaseObserver<Args...> 
-               , public std::enable_shared_from_this<Observer<Derived, Args...>>
+               , public Factory<Derived>
 {
-public :
+    friend class Factory<Derived>;
+
+private :
     /**
      * @brief Creates an object of the derived type using the provided arguments.
      *
@@ -42,19 +45,9 @@ public :
      * @return A shared pointer to an object of the derived type.
      */
     template <typename... ConstructTypes>
-    static auto create(ConstructTypes... types) -> std::shared_ptr<Derived>
+    static auto __create(ConstructTypes... types) noexcept -> std::shared_ptr<Derived>
     {
         return std::shared_ptr<Derived>(new Derived(std::forward<ConstructTypes>(types)...));
-    }
-
-    /**
-     * @brief Returns a shared pointer to this object.
-     *
-     * @return A shared pointer to this object.4
-     */
-    auto get_ptr() noexcept -> std::shared_ptr<Observer<Derived, Args...>>
-    {
-        return this->shared_from_this();
     }
 
 public :
@@ -92,20 +85,6 @@ private :
     std::vector<std::shared_ptr<BaseObserver<Args...>>> _observers;
 
 public :
-    /**
-     * @brief Registers an observer to receive events.
-     *
-     * This method registers an observer to receive events. The observer is stored as a
-     * shared pointer to ensure that the observer is not deleted until all references to
-     * it are destroyed.
-     *
-     * @param observer The observer to be registered.
-     */
-    auto regist(BaseObserver<Args...>& observer) noexcept -> void
-    {
-        _observers.emplace_back(observer.get_ptr());
-    }
-
     /**
      * @brief Registers an observer to receive events.
      *
