@@ -108,7 +108,7 @@ public :
         return true;
     }
 
-    auto get_priority() noexcept -> Priority override
+    auto get_priority() const noexcept -> Priority override
     {
         return _priority;
     }

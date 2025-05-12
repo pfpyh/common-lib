@@ -92,7 +92,7 @@ public :
     };
 
     using Priority = std::tuple<Policies::type, Level::type>;
-#endif 
+#endif
 
 private :
     /**
@@ -167,6 +167,18 @@ public :
      * 
      * @return The current priority of the thread.
      */
-    virtual auto get_priority() noexcept -> Priority = 0;
+    virtual auto get_priority() const noexcept -> Priority = 0;
 };
+
+namespace interface
+{
+class ThreadInterface
+{
+public :
+    virtual auto start() -> std::future<void> = 0;
+    virtual auto stop() noexcept -> void = 0;
+    virtual auto set_priority(const Thread::Priority& priority) noexcept -> bool = 0;
+    virtual auto get_priority() const noexcept -> Thread::Priority = 0;
+};
+} // namespace interface
 } // namespace common

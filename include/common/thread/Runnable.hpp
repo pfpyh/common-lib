@@ -39,9 +39,11 @@ namespace common
  *
  * @note A derived class must implement the pure virtual function __work() to execute a task.
  */
-class Runnable : public NonCopyable
+class Runnable : public interface::ThreadInterface,
+                 public NonCopyable
 {
 private :
+    std::shared_ptr<Thread> _t;
     std::promise<void> _promise;
     bool _running = false;
 
@@ -54,17 +56,16 @@ public :
      * @return std::future which is set when thread is finished.
      * @throw common::exception::AlreadyRunningException if run() is called multiple times.
      */
-    auto run() -> std::future<void>
+    auto start() -> std::future<void> override
     {
         if(_running) throw AlreadyRunningException(); 
         _running = true;
 
-        auto t = Thread::create();
-        t->start([this](){            
+        _t = Thread::create();
+        _t->start([this](){            
             while(_running) { __work(); }
             _promise.set_value();
         });
-        t->detach();
 
         return _promise.get_future();
     }
@@ -79,7 +80,7 @@ public :
      * Once stop() is called, status() will return false.
      * If the thread has already been stopped or was never started, this function does nothing.
      */
-    inline auto stop() noexcept -> void { _running = false; }
+    inline auto stop() noexcept -> void override { _running = false; }
 
     /**
      * @brief Check if run() is called and the thread is running.
@@ -87,6 +88,31 @@ public :
      * @return true if run() is called and the thread is running, false otherwise.
      */
     inline auto status() const noexcept -> bool { return _running; }
+
+    /**
+     * @brief Sets the priority of the thread.
+     * 
+     * This method is used to set the priority of the thread, which can affect its scheduling behavior.
+     * 
+     * @param priority The new priority of the thread.
+     * @return True if the priority was successfully set, false otherwise.
+     */
+    inline auto set_priority(const Thread::Priority& priority) noexcept -> bool override
+    {
+        return _t->set_priority(priority);
+    }
+
+    /**
+     * @brief Gets the current priority of the thread.
+     * 
+     * This method is used to get the current priority of the thread.
+     * 
+     * @return The current priority of the thread.
+     */
+    inline auto get_priority() const noexcept -> Thread::Priority override
+    {
+        return _t->get_priority();
+    }
 
 protected :
     /**
@@ -111,9 +137,11 @@ protected :
  * @note A derived class must implement the pure virtual function __work() to execute a task.
  */
 template <typename DataType>
-class ActiveRunnable
+class ActiveRunnable : public interface::ThreadInterface,
+                       public NonCopyable
 {
 private :
+    std::shared_ptr<Thread> _t;
     std::promise<void> _promise;
     bool _running = false;
 
@@ -130,13 +158,13 @@ public :
      * @return std::future which is set when thread is finished.
      * @throw common::exception::AlreadyRunningException if run() is called multiple times.
      */
-    auto run() -> std::future<void>
+    auto start() -> std::future<void> override
     {
         if(_running) throw AlreadyRunningException();
         _running = true;
 
-        auto t = Thread::create();
-        t->start([this](){            
+        _t = Thread::create();
+        _t->start([this](){            
             while(_running)
             {
                 std::unique_lock<std::mutex> lock(_notifyLock);
@@ -151,7 +179,6 @@ public :
             }
             _promise.set_value();
         });
-        t->detach();
 
         return _promise.get_future();
     }
@@ -190,7 +217,7 @@ public :
      * Once stop() is called, status() will return false.
      * If the thread has already been stopped or was never started, this function does nothing.
      */
-    auto stop() noexcept -> void
+    auto stop() noexcept -> void override
     {
         std::unique_lock<std::mutex> lock(_notifyLock);
         _running = false;
@@ -203,6 +230,31 @@ public :
      * @return true if run() is called and the thread is running, false otherwise.
      */
     inline auto status() const noexcept -> bool { return _running; }
+
+    /**
+     * @brief Sets the priority of the thread.
+     * 
+     * This method is used to set the priority of the thread, which can affect its scheduling behavior.
+     * 
+     * @param priority The new priority of the thread.
+     * @return True if the priority was successfully set, false otherwise.
+     */
+    inline auto set_priority(const Thread::Priority& priority) noexcept -> bool override
+    {
+        return _t->set_priority(priority);
+    }
+
+    /**
+     * @brief Gets the current priority of the thread.
+     * 
+     * This method is used to get the current priority of the thread.
+     * 
+     * @return The current priority of the thread.
+     */
+    inline auto get_priority() const noexcept -> Thread::Priority override
+    {
+        return _t->get_priority();
+    }
 
 protected :
     /**

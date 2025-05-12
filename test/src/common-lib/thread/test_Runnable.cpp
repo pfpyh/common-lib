@@ -25,7 +25,7 @@ TEST(test_Runnable, run)
     auto runnable = TestRunnable();
 
     // when
-    auto future = runnable.run();
+    auto future = runnable.start();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     const auto running = runnable.status();
     runnable.stop();
@@ -58,10 +58,10 @@ TEST(test_Runnable, already_running)
     bool exceptionRised = false;
 
     // when
-    auto future = runnable.run();
+    auto future = runnable.start();
     try 
     { 
-        runnable.run(); 
+        runnable.start(); 
     }
     catch(const AlreadyRunningException& e) 
     { 
@@ -93,7 +93,7 @@ TEST(test_ActiveRunnable, run)
     std::vector<int32_t> dataList = {0, 1, 2, 3, 4, 5};
 
     // when
-    auto future = runnable.run();
+    auto future = runnable.start();
     for(auto i : dataList) { runnable.notify(i); }
     const auto running = runnable.status();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -133,7 +133,7 @@ TEST(test_ActiveRunnable, run_dataType)
     };
 
     // when
-    auto future = runnable.run();
+    auto future = runnable.start();
     for(auto i : dataList) { runnable.notify(i); }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     runnable.stop();
@@ -164,10 +164,10 @@ TEST(test_ActiveRunnable, already_running)
     std::vector<int32_t> dataList = {0, 1, 2, 3, 4, 5};
 
     // when
-    auto future = runnable.run();
+    auto future = runnable.start();
     try 
     { 
-        runnable.run(); 
+        runnable.start(); 
     }
     catch(const AlreadyRunningException& e) 
     {

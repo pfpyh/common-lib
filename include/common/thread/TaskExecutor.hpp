@@ -40,7 +40,8 @@ SOFTWARE.
 
 namespace common
 {
-class TaskExecutor final : public NonCopyable,
+class TaskExecutor final : public interface::ThreadInterface,
+                           public NonCopyable,
                            public Factory<TaskExecutor>
 {
     friend class Factory<TaskExecutor>;
@@ -96,8 +97,10 @@ private :
         return std::shared_ptr<TaskExecutor>(new TaskExecutor(threadCount));
     }
 
+    auto start() -> std::future<void> override { return std::future<void>(); } // Unused function
+
 public :
-    auto stop() noexcept -> void
+    auto stop() noexcept -> void override
     {
         {
             std::lock_guard<std::mutex> lock(_lock);
@@ -107,6 +110,37 @@ public :
         _cv.notify_all();
         for(auto& worker : _workers) { std::get<1>(worker).wait(); }
         _workers.clear();
+    }
+
+    /**
+     * @brief Sets the priority of the thread.
+     * 
+     * This method is used to set the priority of the thread, which can affect its scheduling behavior.
+     * 
+     * @param priority The new priority of the thread.
+     * @return True if the priority was successfully set, false otherwise.
+     */
+    auto set_priority(const Thread::Priority& priority) noexcept -> bool override
+    {
+        bool rtn = true;
+        for(auto& worker : _workers) { 
+            if(!std::get<0>(worker)->set_priority(priority)) { 
+                rtn = false; 
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @brief Gets the current priority of the thread.
+     * 
+     * This method is used to get the current priority of the thread.
+     * 
+     * @return The current priority of the thread.
+     */
+    auto get_priority() const noexcept -> Thread::Priority override
+    { 
+        return std::get<0>(_workers[0])->get_priority(); 
     }
 
     template <typename ReturnType>
