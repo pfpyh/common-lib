@@ -40,7 +40,7 @@ SOFTWARE.
 
 namespace common
 {
-class TaskExecutor final : public interface::ThreadInterface,
+class TaskExecutor final : public base::ThreadInterface,
                            public NonCopyable,
                            public Factory<TaskExecutor>
 {

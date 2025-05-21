@@ -39,7 +39,7 @@ namespace common
  *
  * @note A derived class must implement the pure virtual function __work() to execute a task.
  */
-class Runnable : public interface::ThreadInterface,
+class Runnable : public base::ThreadInterface,
                  public NonCopyable
 {
 private :
@@ -137,7 +137,7 @@ protected :
  * @note A derived class must implement the pure virtual function __work() to execute a task.
  */
 template <typename DataType>
-class ActiveRunnable : public interface::ThreadInterface,
+class ActiveRunnable : public base::ThreadInterface,
                        public NonCopyable
 {
 private :

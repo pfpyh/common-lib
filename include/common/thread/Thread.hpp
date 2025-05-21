@@ -170,7 +170,7 @@ public :
     virtual auto get_priority() const noexcept -> Priority = 0;
 };
 
-namespace interface
+namespace base
 {
 class ThreadInterface
 {
@@ -180,5 +180,5 @@ public :
     virtual auto set_priority(const Thread::Priority& priority) noexcept -> bool = 0;
     virtual auto get_priority() const noexcept -> Thread::Priority = 0;
 };
-} // namespace interface
+} // namespace base
 } // namespace common
