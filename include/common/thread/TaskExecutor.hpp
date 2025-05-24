@@ -37,6 +37,7 @@ SOFTWARE.
 #include <vector>
 #include <queue>
 #include <iostream>
+#include <string>
 
 namespace common
 {
@@ -61,7 +62,7 @@ public :
         for(uint32_t i = 0; i < threadCount; ++i)
         {
             auto worker = Thread::create();
-            auto future = worker->start([this]() mutable
+            auto future = worker->start([num = i, this]() mutable
             {
                 while (true)
                 {
@@ -79,6 +80,7 @@ public :
                         task = std::move(_tasks.front());
                         _tasks.pop();
                     }
+                    std::cout << "Worker[" << std::to_string(num) << "] is working" << std::endl;
                     task();
                 }
             });
@@ -155,7 +157,7 @@ public :
             _tasks.emplace([packagedTask]() mutable { (*packagedTask)(); });
         }
 
-        _cv.notify_one();
+        _cv.notify_all();
         return future;
     }
 };

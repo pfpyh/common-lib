@@ -1,6 +1,8 @@
 set(TARGET_NAME test-${TARGET_NAME})
 project(${TARGET_NAME})
 
+set(EVENT_THREADS 4)
+
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_LIST_DIR}/src/*.cpp)
 
 set(INCLUDES ${CMAKE_CURRENT_LIST_DIR}/include
@@ -30,3 +32,7 @@ target_link_directories(${TARGET_NAME}
 target_link_libraries(${TARGET_NAME}
                       PRIVATE 
                       ${DEPENDENCIES})
+
+target_compile_definitions(${TARGET_NAME}
+                           PRIVATE 
+                           EVENT_THREADS)
