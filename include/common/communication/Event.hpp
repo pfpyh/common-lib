@@ -34,53 +34,53 @@ SOFTWARE.
 
 namespace common
 {
-struct Event
-{
-    std::string _topic;
-    std::vector<uint8_t> _payload;
-};
+// `struct Event
+// {
+//     std::string _topic;
+//     std::vector<uint8_t> _payload;
+// };
 
-class EventBus final : public NonCopyable
-{
-    using TOPIC = std::string;
-    using PAYLOAD = std::vector<uint8_t>;
-    using HANDLER = std::function<void(const PAYLOAD&)>;
+// class EventBus final : public NonCopyable
+// {
+//     using TOPIC = std::string;
+//     using PAYLOAD = std::vector<uint8_t>;
+//     using HANDLER = std::function<void(const PAYLOAD&)>;
 
-private :
-    std::shared_ptr<common::TaskExecutor> _executor;
-    std::unordered_map<std::string, std::vector<HANDLER>> _handlers;
-    std::mutex _lock;
+// private :
+//     std::shared_ptr<common::TaskExecutor> _executor;
+//     std::unordered_map<std::string, std::vector<HANDLER>> _handlers;
+//     std::mutex _lock;
 
-public :
-    explicit EventBus(uint32_t threadCount = EVENT_THREADS)
-        : _executor(common::TaskExecutor::create(threadCount)) {}
-    ~EventBus() { finalize(); }
+// public :
+//     explicit EventBus(uint32_t threadCount = EVENT_THREADS)
+//         : _executor(common::TaskExecutor::create(threadCount)) {}
+//     ~EventBus() { finalize(); }
 
-public :
-    auto finalize() -> void
-    {
-        _executor->stop();
-    }
+// public :
+//     auto finalize() -> void
+//     {
+//         _executor->stop();
+//     }
 
-    auto subscribe(const std::string& topic, HANDLER handler) -> void
-    {
-        std::lock_guard<std::mutex> scopedLock(_lock);
-        _handlers[topic].push_back(std::move(handler));
-    }
+//     auto subscribe(const std::string& topic, HANDLER handler) -> void
+//     {
+//         std::lock_guard<std::mutex> scopedLock(_lock);
+//         _handlers[topic].push_back(std::move(handler));
+//     }
 
-    auto publish(const std::string& topic, const PAYLOAD& payload) -> void
-    {
-        std::lock_guard<std::mutex> scopedLock(_lock);
-        auto itor = _handlers.find(topic);
-        if(_handlers.end() != itor)
-        {
-            for(auto& handler : itor->second)
-            {
-                _executor->load<void>([payload = payload, handler](){
-                    handler(payload);
-                });
-            }
-        }
-    }
-};
+//     auto publish(const std::string& topic, const PAYLOAD& payload) -> void
+//     {
+//         std::lock_guard<std::mutex> scopedLock(_lock);
+//         auto itor = _handlers.find(topic);
+//         if(_handlers.end() != itor)
+//         {
+//             for(auto& handler : itor->second)
+//             {
+//                 _executor->load<void>([payload = payload, handler](){
+//                     handler(payload);
+//                 });
+//             }
+//         }
+//     }
+// };
 } // namespace common

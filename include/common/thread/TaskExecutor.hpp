@@ -28,70 +28,28 @@ SOFTWARE.
 #include "common/NonCopyable.hpp"
 #include "common/Factory.hpp"
 #include "common/thread/Thread.hpp"
+#include "common/misc/Utils.hpp"
+#include "common/container/WorkQueue.hpp"
 
-#include <stdint.h>
-#include <future>
-#include <functional>
-#include <atomic>
-#include <tuple>
-#include <vector>
-#include <queue>
-#include <iostream>
+#include <chrono>
+#include <thread>
+
 #include <string>
+#include <iostream>
 
 namespace common
 {
-class TaskExecutor final : public base::ThreadInterface,
-                           public NonCopyable,
+class TaskExecutor final : public NonCopyable,
                            public Factory<TaskExecutor>
 {
     friend class Factory<TaskExecutor>;
 
-public :
-    std::mutex _lock;
-    std::condition_variable _cv;
-    std::atomic<bool> _running = true;
-
-    std::queue<std::function<void()>> _tasks;
-    std::vector<std::tuple<std::shared_ptr<Thread>, std::future<void>>> _workers;
-
-public :
-    explicit TaskExecutor(uint32_t threadCount) noexcept
-    {
-        _workers.reserve(threadCount);
-        for(uint32_t i = 0; i < threadCount; ++i)
-        {
-            auto worker = Thread::create();
-            auto future = worker->start([num = i, this]() mutable
-            {
-                while (true)
-                {
-                    std::function<void()> task;
-                    {
-                        std::unique_lock<std::mutex> lock(_lock);
-                        _cv.wait(lock, [this]() { 
-                            return !_running.load() || !_tasks.empty(); 
-                        });
+private :
+    std::atomic<bool> _running{false};
+    std::atomic<uint32_t> _index{0};
     
-                        if (!_running.load() && _tasks.empty()) { 
-                            break; 
-                        }
-    
-                        task = std::move(_tasks.front());
-                        _tasks.pop();
-                    }
-                    std::cout << "Worker[" << std::to_string(num) << "] is working" << std::endl;
-                    task();
-                }
-            });
-            _workers.push_back({worker, std::move(future)});
-        }
-    }
-
-    ~TaskExecutor() noexcept
-    {
-        if (_running.load()) { stop(); }
-    }
+    std::vector<std::future<void>> _futures;
+    std::vector<std::unique_ptr<WorkQueue>> _queues;
 
 private :
     static auto __create(uint32_t threadCount) noexcept -> std::shared_ptr<TaskExecutor>
@@ -99,66 +57,58 @@ private :
         return std::shared_ptr<TaskExecutor>(new TaskExecutor(threadCount));
     }
 
-    auto start() -> std::future<void> override { return std::future<void>(); } // Unused function
+public :
+    explicit TaskExecutor(uint32_t threadCount) noexcept
+    {
+        const uint32_t adjustedThreadCount = utils::next_pwr_of_2(threadCount);
+        _running.store(true);
+        _futures.reserve(adjustedThreadCount);
+        for(uint32_t i = 0; i < adjustedThreadCount; ++i)
+        {
+            auto queue = std::make_unique<WorkQueue>();
+            _queues.push_back(std::move(queue));            auto worker = Thread::create();
+            auto future = worker->start([index = i, this]() mutable {
+                while(_running.load())
+                {
+                    auto task = _queues[index]->pop(_running);
+                    if (task) { task(); }
+
+                    if (!_running.load() || _queues[index]->empty()) { break; }
+                    
+                    for (size_t i = 1; i < _queues.size(); ++i) 
+                    {
+                        size_t targetIndex = (index + i) % _queues.size();
+                        task = _queues[targetIndex]->try_steal();
+                        if (task) 
+                        {
+                            task();
+                            break;
+                        }
+                    }
+                }
+            });
+            worker->detach();
+            _futures.push_back(std::move(future));
+        }
+    }
 
 public :
-    auto stop() noexcept -> void override
+    auto stop() noexcept -> void
     {
-        {
-            std::lock_guard<std::mutex> lock(_lock);
-            _running.store(false);
+        _running.store(false);
+        for(auto& queue : _queues) {
+            queue->finalize();
         }
-    
-        _cv.notify_all();
-        for(auto& worker : _workers) { std::get<1>(worker).wait(); }
-        _workers.clear();
-    }
-
-    /**
-     * @brief Sets the priority of the thread.
-     * 
-     * This method is used to set the priority of the thread, which can affect its scheduling behavior.
-     * 
-     * @param priority The new priority of the thread.
-     * @return True if the priority was successfully set, false otherwise.
-     */
-    auto set_priority(const Thread::Priority& priority) noexcept -> bool override
-    {
-        bool rtn = true;
-        for(auto& worker : _workers) { 
-            if(!std::get<0>(worker)->set_priority(priority)) { 
-                rtn = false; 
-            }
+        for(auto& future : _futures) {
+            future.wait();
         }
-        return false;
-    }
-
-    /**
-     * @brief Gets the current priority of the thread.
-     * 
-     * This method is used to get the current priority of the thread.
-     * 
-     * @return The current priority of the thread.
-     */
-    auto get_priority() const noexcept -> Thread::Priority override
-    { 
-        return std::get<0>(_workers[0])->get_priority(); 
     }
 
     template <typename ReturnType>
     auto load(std::function<ReturnType()> task) noexcept -> std::future<ReturnType>
     {
-        using TaskType = std::packaged_task<ReturnType()>;
-        auto packagedTask = std::make_shared<TaskType>(std::move(task));
-
-        std::future<ReturnType> future = packagedTask->get_future();
-        {
-            std::lock_guard<std::mutex> lock(_lock);
-            _tasks.emplace([packagedTask]() mutable { (*packagedTask)(); });
-        }
-
-        _cv.notify_all();
-        return future;
+        const uint32_t queueIndex = _index.fetch_add(1) & (_queues.size() - 1);
+        return _queues[queueIndex]->push(std::forward<std::function<ReturnType()>>(task));
     }
 };
 } // namespace common
