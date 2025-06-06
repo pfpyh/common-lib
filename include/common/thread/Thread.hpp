@@ -25,6 +25,7 @@ SOFTWARE.
 #pragma once
 
 #include "CommonHeader.hpp"
+
 #include "common/NonCopyable.hpp"
 #include "common/Factory.hpp"
 

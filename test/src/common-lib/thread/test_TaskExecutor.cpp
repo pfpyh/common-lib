@@ -34,9 +34,10 @@ SOFTWARE.
 
 namespace common::test
 {
-TEST(TaskExecutorTest, Load)
+TEST(TaskExecutorTest, Load_00)
 {
-    { // Case 1: Load with a simple function
+    // Case 1: Load with a simple function
+    {
         // given
         auto executor = TaskExecutor::create(4);
         std::vector<std::future<void>> futures;
@@ -63,10 +64,10 @@ TEST(TaskExecutorTest, Load)
         }
         executor->stop();
     }
-    { // Case 2: Load with different return types
+    // Case 2: Load with different return types
+    {
         // given
         auto executor = TaskExecutor::create(4);
-        std::vector<std::future<void>> futures;
 
         // when
         auto future_int32_t = executor->load<int32_t>([]() {
@@ -93,22 +94,25 @@ TEST(TaskExecutorTest, Load)
         ASSERT_NO_THROW(future_void.get());
         ASSERT_EQ(future_string.wait_for(std::chrono::seconds(1)), std::future_status::ready);
         ASSERT_EQ(future_string.get(), "Hello, World!");
-    }    
-    { // Case 3: Fast task loading with multiple threads
+
+        executor->stop();
+    }
+    // Case 3: Fast task loading with multiple threads
+    {
         // given
         auto executor = TaskExecutor::create(4);
-        const int tasksPerThread = 50;
-        const int numThreads = 4;
-        std::vector<std::vector<std::future<int>>> futures(numThreads);
+        const int32_t tasksPerThread = 50;
+        const int32_t numThreads = 4;
+        std::vector<std::vector<std::future<int32_t>>> futures(numThreads);
         std::vector<std::shared_ptr<Thread>> threads;
         std::vector<std::future<void>> threadFutures;
         
         // when
-        for(int threadId = 0; threadId < numThreads; ++threadId) {
+        for(int32_t threadId = 0; threadId < numThreads; ++threadId) {
             auto thread = Thread::create();
             auto future = thread->start([threadId, tasksPerThread, &executor, &futures]() {
-                for(int taskId = 0; taskId < tasksPerThread; ++taskId) {
-                    auto taskFuture = executor->load<int>([threadId, taskId]() {
+                for(int32_t taskId = 0; taskId < tasksPerThread; ++taskId) {
+                    auto taskFuture = executor->load<int32_t>([threadId, taskId]() {
                         auto start = std::chrono::high_resolution_clock::now();
                         while(true) {
                             auto now = std::chrono::high_resolution_clock::now();
@@ -130,13 +134,13 @@ TEST(TaskExecutorTest, Load)
         
         // then
         auto startTime = std::chrono::high_resolution_clock::now();
-        for(int threadId = 0; threadId < numThreads; ++threadId) {
-            for(int taskId = 0; taskId < tasksPerThread; ++taskId) {
+        for(int32_t threadId = 0; threadId < numThreads; ++threadId) {
+            for(int32_t taskId = 0; taskId < tasksPerThread; ++taskId) {
                 auto status = futures[threadId][taskId].wait_for(std::chrono::seconds(5));
                 ASSERT_EQ(status, std::future_status::ready);
                 
-                int result = futures[threadId][taskId].get();
-                int expected = threadId * 1000 + taskId;
+                int32_t result = futures[threadId][taskId].get();
+                int32_t expected = threadId * 1000 + taskId;
                 ASSERT_EQ(result, expected);
             }
         }
@@ -144,9 +148,10 @@ TEST(TaskExecutorTest, Load)
         auto totalTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
         
         std::cout << "Total execution time: " << totalTime.count() << "ms for " 
-                  << (numThreads * tasksPerThread) << " tasks" << std::endl;
+                    << (numThreads * tasksPerThread) << " tasks" << std::endl;
         
         ASSERT_LT(totalTime.count(), 150);
+
         executor->stop();
     }
 }
@@ -155,17 +160,17 @@ TEST(TaskExecutorTest, WorkStealing)
 {
     // given
     auto executor = TaskExecutor::create(4);
-    const int totalTasks = 200;
-    std::vector<std::future<int>> futures;
-    std::atomic<int> taskCounter{0};
-    std::array<std::atomic<int>, 4> threadWorkCount{};
+    const int32_t totalTasks = 200;
+    std::vector<std::future<int32_t>> futures;
+    std::atomic<int32_t> taskCounter{0};
+    std::array<std::atomic<int32_t>, 4> threadWorkCount{};
     
     // when
-    for(int i = 0; i < totalTasks; ++i) {
-        auto future = executor->load<int>([i, &taskCounter, &threadWorkCount]() {
-            thread_local static int threadId = -1;
+    for(int32_t i = 0; i < totalTasks; ++i) {
+        auto future = executor->load<int32_t>([i, &taskCounter, &threadWorkCount]() {
+            thread_local static int32_t threadId = -1;
             if (threadId == -1) {
-                static std::atomic<int> nextId{0};
+                static std::atomic<int32_t> nextId{0};
                 threadId = nextId.fetch_add(1);
             }
                 if (threadId < 4) {
@@ -186,7 +191,7 @@ TEST(TaskExecutorTest, WorkStealing)
     }
     
     // then
-    std::set<int> results;
+    std::set<int32_t> results;
     for(auto& future : futures) {
         auto status = future.wait_for(std::chrono::seconds(10));
         ASSERT_EQ(status, std::future_status::ready);
@@ -197,9 +202,9 @@ TEST(TaskExecutorTest, WorkStealing)
     ASSERT_EQ(*results.begin(), 0);
     ASSERT_EQ(*results.rbegin(), totalTasks - 1);
     
-    int activeThreads = 0;
-    for(int i = 0; i < 4; ++i) {
-        int workCount = threadWorkCount[i].load();
+    int32_t activeThreads = 0;
+    for(int32_t i = 0; i < 4; ++i) {
+        int32_t workCount = threadWorkCount[i].load();
         std::cout << "Thread " << i << " processed " << workCount << " tasks" << std::endl;
         if (workCount > 0) {
             activeThreads++;

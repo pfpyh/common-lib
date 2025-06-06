@@ -22,21 +22,35 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#pragma once
+#include "common/communication/Event.hpp"
 
-#include "CommonHeader.hpp"
-#include <stdint.h>
-
-namespace common::utils
+namespace common
 {
-/**
- * @brief Calculates the next power of 2 greater than or equal to the given number.
- *
- * This function returns the smallest power of 2 that is greater than or equal to the input value @p n.
- * If @p n is already a power of 2, the function returns @p n itself.
- *
- * @param n The input unsigned 32-bit integer.
- * @return uint32_t The next power of 2 greater than or equal to @p n.
- */
-COMMON_LIB_API auto next_pwr_of_2(uint32_t n) noexcept -> uint32_t;
-} // namespace common::utils
+EventBus::EventBus(uint32_t threadCount /* = EVENT_THREADS */)
+    : _executor(TaskExecutor::create(threadCount)) {}
+
+EventBus::~EventBus() { finalize(); }
+
+auto EventBus::finalize() -> void { _executor->stop(); }
+
+auto EventBus::subscribe(const std::string& topic, HANDLER handler) -> void
+{
+    std::lock_guard<std::mutex> scopedLock(_lock);
+    _handlers[topic].push_back(std::move(handler));
+}
+
+auto EventBus::publish(const std::string& topic, const PAYLOAD& payload) -> void
+{
+    std::lock_guard<std::mutex> scopedLock(_lock);
+    auto itor = _handlers.find(topic);
+    if(_handlers.end() != itor)
+    {
+        for(auto& handler : itor->second)
+        {
+            _executor->load<void>([payload = payload, handler](){
+                handler(payload);
+            });
+        }
+    }
+}
+} // namespace common

@@ -25,22 +25,28 @@ SOFTWARE.
 #pragma once
 
 #include "CommonHeader.hpp"
+
 #include "common/NonCopyable.hpp"
 #include "common/Factory.hpp"
-#include "common/thread/Thread.hpp"
 #include "common/misc/Utils.hpp"
+#include "common/thread/Thread.hpp"
 #include "common/container/WorkQueue.hpp"
 
-#include <chrono>
-#include <thread>
-
-#include <string>
 #include <iostream>
+#include <vector>
 
 namespace common
 {
-class TaskExecutor final : public NonCopyable,
-                           public Factory<TaskExecutor>
+/**
+ * @class TaskExecutor
+ * @brief A thread pool executor that manages multiple worker threads for task execution
+ * 
+ * TaskExecutor implements a work-stealing thread pool that distributes tasks across
+ * multiple worker threads. It uses a round-robin approach for task distribution and
+ * employs work-stealing to balance load across threads.
+ */
+class COMMON_LIB_API TaskExecutor final : public NonCopyable,
+                                          public Factory<TaskExecutor>
 {
     friend class Factory<TaskExecutor>;
 
@@ -48,67 +54,108 @@ private :
     std::atomic<bool> _running{false};
     std::atomic<uint32_t> _index{0};
     
-    std::vector<std::future<void>> _futures;
-    std::vector<std::unique_ptr<WorkQueue>> _queues;
+    std::vector<std::tuple<std::future<void>, std::shared_ptr<Thread>>> _workers;
+    std::vector<std::shared_ptr<WorkQueue>> _queues;
 
 private :
+    /**
+     * @brief Factory method to create a TaskExecutor instance
+     * @param threadCount Number of worker threads to create
+     * @return Shared pointer to the created TaskExecutor instance
+     */
     static auto __create(uint32_t threadCount) noexcept -> std::shared_ptr<TaskExecutor>
     {
         return std::shared_ptr<TaskExecutor>(new TaskExecutor(threadCount));
     }
 
 public :
+    /**
+     * @brief Constructor that initializes the thread pool with specified number of threads
+     * @param threadCount Number of worker threads to create (will be adjusted to next power of 2)
+     * 
+     * Creates a thread pool with the specified number of threads. The actual thread count
+     * is adjusted to the next power of 2 for efficient bit masking operations.
+     * Each thread runs a work-stealing loop that processes tasks from its own queue
+     * and steals work from other queues when idle.
+     */
     explicit TaskExecutor(uint32_t threadCount) noexcept
     {
         const uint32_t adjustedThreadCount = utils::next_pwr_of_2(threadCount);
         _running.store(true);
-        _futures.reserve(adjustedThreadCount);
+        _workers.reserve(adjustedThreadCount);
         for(uint32_t i = 0; i < adjustedThreadCount; ++i)
         {
-            auto queue = std::make_unique<WorkQueue>();
-            _queues.push_back(std::move(queue));            auto worker = Thread::create();
+            auto queue = std::make_shared<WorkQueue>();
+            _queues.push_back(std::move(queue));
+            auto worker = Thread::create();
             auto future = worker->start([index = i, this]() mutable {
                 while(_running.load())
                 {
                     auto task = _queues[index]->pop(_running);
                     if (task) { task(); }
-
-                    if (!_running.load() || _queues[index]->empty()) { break; }
                     
-                    for (size_t i = 1; i < _queues.size(); ++i) 
+                    if (_queues[index]->empty())
                     {
-                        size_t targetIndex = (index + i) % _queues.size();
-                        task = _queues[targetIndex]->try_steal();
-                        if (task) 
+                        for (size_t i = 1; i < _queues.size(); ++i) 
                         {
-                            task();
-                            break;
+                            if (!_running.load()) { break; }
+                            size_t targetIndex = (index + i) % _queues.size();
+                            task = _queues[targetIndex]->try_steal();
+                            if (task) 
+                            {
+                                task();
+                                break;
+                            }
                         }
                     }
                 }
             });
-            worker->detach();
-            _futures.push_back(std::move(future));
+            _workers.push_back({std::move(future), std::move(worker)});
         }
     }
 
-public :
-    auto stop() noexcept -> void
-    {
-        _running.store(false);
-        for(auto& queue : _queues) {
-            queue->finalize();
-        }
-        for(auto& future : _futures) {
-            future.wait();
-        }
-    }
+    /**
+     * @brief Destructor that stops all worker threads
+     * 
+     * Ensures all worker threads are properly stopped and joined before destruction.
+     */
+    ~TaskExecutor() noexcept { stop(); }
 
+public :    
+    /**
+     * @brief Submits a task for execution by the thread pool
+     * @tparam ReturnType The return type of the task function
+     * @param task The task function to execute
+     * @return A future object that can be used to retrieve the task result
+     * 
+     * Distributes the task to one of the worker threads using round-robin scheduling.
+     * The task is added to a work queue and will be executed by an available worker thread.
+     */
     template <typename ReturnType>
-    auto load(std::function<ReturnType()> task) noexcept -> std::future<ReturnType>
+    auto load(std::function<ReturnType()>&& task) noexcept -> std::future<ReturnType>
     {
         const uint32_t queueIndex = _index.fetch_add(1) & (_queues.size() - 1);
-        return _queues[queueIndex]->push(std::forward<std::function<ReturnType()>>(task));
+        return _queues[queueIndex]->push(std::move(task));
+    }
+
+    /**
+     * @brief Stops all worker threads and waits for them to complete
+     * 
+     * Sets the running flag to false, finalizes all work queues to wake up
+     * waiting threads, and waits for all worker threads to complete their
+     * current tasks and terminate.
+     */
+    auto stop() noexcept -> void
+    {
+        if(!_running.load()) { return; }
+
+        _running.store(false);
+        const auto threadCount = _workers.size();
+        for(size_t i = 0; i < threadCount; ++i)
+        {
+            _queues[i]->finalize();
+            std::get<0>(_workers[i]).wait();
+        }
     }
 };
 } // namespace common

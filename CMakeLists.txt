@@ -1,9 +1,16 @@
 cmake_minimum_required(VERSION 3.16)
 
+
+
 set(TARGET_NAME common-lib)
 set(CMAKE_CXX_STANDARD 17)
 
 project(${TARGET_NAME})
+
+# EventBus 설정 ########################################
+set(EVENT_THREADS 4 CACHE STRING "Number of threads used by EventBus (default: 4)")
+message(STATUS "EVENT_THREADS=${EVENT_THREADS}")
+##########################################################
 
 # GoogleTest ############################################
 set(GTEST_ROOT ${CMAKE_CURRENT_LIST_DIR}/libs/googletest)
@@ -65,7 +72,10 @@ target_link_directories(${TARGET_NAME}
                         PRIVATE ${LINKS})
 
 target_compile_definitions(${TARGET_NAME} 
-                           PRIVATE BUILDING_COMMON_LIB)
+                           PRIVATE 
+                           BUILDING_COMMON_LIB
+                           PUBLIC 
+                           EVENT_THREADS=${EVENT_THREADS})
 
 # pybind11 ################################################
 if(PYTHON_BUILD)
@@ -80,7 +90,7 @@ if(PYTHON_BUILD)
 
     set(DEPENDENCIES ${TARGET_NAME}
                      pybind11::module 
-                     Python3::Python)
+                     Python3::Python) 
 
     file(GLOB_RECURSE PY_SOURCES ${CMAKE_CURRENT_LIST_DIR}/python/*.cpp)
 
@@ -90,12 +100,17 @@ if(PYTHON_BUILD)
                                PRIVATE ${INCLUDES})
 
     target_link_directories(${PY_TARGET_NAME}
-                            PRIVATE ${LINKS})
-
+                            PRIVATE ${LINKS})    
+                            
     target_link_libraries(${PY_TARGET_NAME} 
                           PRIVATE ${DEPENDENCIES})
+
+    target_compile_definitions(${PY_TARGET_NAME}
+                               PRIVATE EVENT_THREADS=${EVENT_THREADS})
 endif()
 ###########################################################
+
+enable_testing()
 
 add_subdirectory(libs)
 add_subdirectory(test)

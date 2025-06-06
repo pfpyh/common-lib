@@ -1,8 +1,6 @@
 set(TARGET_NAME test-${TARGET_NAME})
 project(${TARGET_NAME})
 
-set(EVENT_THREADS 4)
-
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_LIST_DIR}/src/*.cpp)
 
 set(INCLUDES ${CMAKE_CURRENT_LIST_DIR}/include
@@ -18,8 +16,6 @@ set(DEPENDENCIES ${DEPENDENCIES}
                  gmock)
 
 add_executable(${TARGET_NAME} ${SOURCES})
-add_test(NAME ${TARGET_NAME}
-         COMMAND ${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME})
 
 target_include_directories(${TARGET_NAME}
                            PRIVATE 
@@ -33,6 +29,5 @@ target_link_libraries(${TARGET_NAME}
                       PRIVATE 
                       ${DEPENDENCIES})
 
-target_compile_definitions(${TARGET_NAME}
-                           PRIVATE 
-                           EVENT_THREADS)
+add_test(NAME ${TARGET_NAME}
+         COMMAND ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/${TARGET_NAME})

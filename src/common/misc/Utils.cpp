@@ -26,14 +26,14 @@ SOFTWARE.
 
 namespace common::utils
 {
-// auto next_pwr_of_2(uint32_t n) noexcept -> uint32_t
-// {
-//     if (n <= 1) return 1;
-//     n--;
-//     n |= n >> 1;
-//     n |= n >> 2;
-//     n |= n >> 4;    n |= n >> 8;
-//     n |= n >> 16;
-//     return n + 1;
-// }
+auto next_pwr_of_2(uint32_t n) noexcept -> uint32_t
+{
+    if (n <= 1) return 1;
+    n--;
+    n |= n >> 1;
+    n |= n >> 2;
+    n |= n >> 4;    n |= n >> 8;
+    n |= n >> 16;
+    return n + 1;
+}
 } // namespace common::utils
