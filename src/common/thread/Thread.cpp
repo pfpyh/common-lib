@@ -50,7 +50,7 @@ public :
     auto start(std::function<void()>&& func) noexcept -> std::future<void> override
     {
         auto future = _promise.get_future();
-        _thread = std::thread([this, work = std::move(func)]() mutable 
+        _thread = std::thread([this, work = std::move(func)]() 
         {
             set_priority(_priority);
             work();
@@ -119,6 +119,7 @@ auto Thread::__create() noexcept -> std::shared_ptr<Thread>
 {
     return std::shared_ptr<Thread>(new detail::ThreadDetail, [](detail::ThreadDetail* obj){
         obj->join();
+        delete obj;
     });
 }
 

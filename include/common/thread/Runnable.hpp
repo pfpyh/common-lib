@@ -44,7 +44,6 @@ class Runnable : public base::ThreadInterface,
 {
 private :
     std::shared_ptr<Thread> _t;
-    std::promise<void> _promise;
     bool _running = false;
 
 public :
@@ -62,12 +61,9 @@ public :
         _running = true;
 
         _t = Thread::create();
-        _t->start([this](){            
+        return _t->start([this](){            
             while(_running) { __work(); }
-            _promise.set_value();
         });
-
-        return _promise.get_future();
     }
 
     /**
@@ -142,7 +138,6 @@ class ActiveRunnable : public base::ThreadInterface,
 {
 private :
     std::shared_ptr<Thread> _t;
-    std::promise<void> _promise;
     bool _running = false;
 
     std::mutex _notifyLock;
@@ -164,7 +159,7 @@ public :
         _running = true;
 
         _t = Thread::create();
-        _t->start([this](){            
+        return _t->start([this](){
             while(_running)
             {
                 std::unique_lock<std::mutex> lock(_notifyLock);
@@ -177,10 +172,7 @@ public :
 
                 __work(std::move(data));
             }
-            _promise.set_value();
         });
-
-        return _promise.get_future();
     }
 
     /**
