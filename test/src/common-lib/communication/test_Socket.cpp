@@ -5,6 +5,8 @@
 
 #include "common/logging/Logger.hpp"
 
+#include <thread>
+
 namespace common::test
 {
 TEST(test_Socket, send_recv)
@@ -28,6 +30,8 @@ TEST(test_Socket, send_recv)
 
         server->send(server_msg.c_str(), server_msg.size());
     });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     auto client_future = Thread::async([&client_msg, &client_rcv_msg](){ 
         auto client = Socket::create(SocketType::CLIENT);

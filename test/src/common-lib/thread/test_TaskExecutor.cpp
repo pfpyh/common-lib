@@ -34,7 +34,7 @@ SOFTWARE.
 
 namespace common::test
 {
-TEST(TaskExecutorTest, Load_00)
+TEST(test_TaskExecutor, Load)
 {
     // Case 1: Load with a simple function
     {
@@ -156,7 +156,7 @@ TEST(TaskExecutorTest, Load_00)
     }
 }
 
-TEST(TaskExecutorTest, WorkStealing)
+TEST(test_TaskExecutor, WorkStealing)
 {
     // given
     auto executor = TaskExecutor::create(4);

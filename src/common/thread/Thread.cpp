@@ -119,6 +119,7 @@ auto Thread::__create() noexcept -> std::shared_ptr<Thread>
 {
     return std::shared_ptr<Thread>(new detail::ThreadDetail, [](detail::ThreadDetail* obj){
         obj->join();
+        delete obj;
     });
 }
 

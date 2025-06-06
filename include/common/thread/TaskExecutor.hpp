@@ -156,6 +156,7 @@ public :
             _queues[i]->finalize();
             std::get<0>(_workers[i]).wait();
         }
+        _workers.clear();
     }
 };
 } // namespace common

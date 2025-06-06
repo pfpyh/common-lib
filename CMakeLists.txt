@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
 
-
-
 set(TARGET_NAME common-lib)
 set(CMAKE_CXX_STANDARD 17)
 
 project(${TARGET_NAME})
+
+include(CTest)
+enable_testing()
 
 # EventBus 설정 ########################################
 set(EVENT_THREADS 4 CACHE STRING "Number of threads used by EventBus (default: 4)")

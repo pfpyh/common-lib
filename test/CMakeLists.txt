@@ -29,5 +29,5 @@ target_link_libraries(${TARGET_NAME}
                       PRIVATE 
                       ${DEPENDENCIES})
 
-add_test(NAME ${TARGET_NAME}
-         COMMAND ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/${TARGET_NAME})
+include(GoogleTest)
+gtest_discover_tests(${TARGET_NAME})
