@@ -1,3 +1,5 @@
+#if 0
+
 #include "common/communication/Socket.hpp"
 #include "common/Exception.hpp"
 
@@ -274,3 +276,5 @@ auto Socket::__create(SocketType::type socketType) -> std::shared_ptr<Socket>
     });
 };
 } // namespace common
+
+#endif
