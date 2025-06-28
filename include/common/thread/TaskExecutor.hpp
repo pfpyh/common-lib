@@ -45,8 +45,8 @@ namespace common
  * multiple worker threads. It uses a round-robin approach for task distribution and
  * employs work-stealing to balance load across threads.
  */
-class COMMON_LIB_API TaskExecutor final : public NonCopyable,
-                                          public Factory<TaskExecutor>
+class TaskExecutor final : public NonCopyable,
+                           public Factory<TaskExecutor>
 {
     friend class Factory<TaskExecutor>;
 

@@ -34,126 +34,125 @@ SOFTWARE.
 
 namespace common::test
 {
-TEST(test_TaskExecutor, Load)
+TEST(test_TaskExecutor, LoadSimpleFunction)
 {
-    // Case 1: Load with a simple function
-    {
-        // given
-        auto executor = TaskExecutor::create(4);
-        std::vector<std::future<void>> futures;
-        
-        // when
-        auto thread = Thread::create();
-        auto testFuture = thread->start([&executor, &futures](){
-            for(uint8_t i = 0; i < 10; ++i)
-            {
-                auto future = executor->load<void>([]() { 
-                    auto sleepDuration = std::chrono::milliseconds(100);
-                    std::this_thread::sleep_for(sleepDuration);
-                });
-                futures.push_back(std::move(future));
-            }
-        });
-        testFuture.wait();
-
-        // then
-        for(auto& future : futures) 
-        { 
-            auto state = future.wait_for(std::chrono::seconds(3));
-            ASSERT_EQ(state, std::future_status::ready);
-        }
-        executor->stop();
-    }
-    // Case 2: Load with different return types
-    {
-        // given
-        auto executor = TaskExecutor::create(4);
-
-        // when
-        auto future_int32_t = executor->load<int32_t>([]() {
-            auto sleepDuration = std::chrono::milliseconds(100 + (std::rand() % 101));
-            std::this_thread::sleep_for(sleepDuration);
-            return 42;
-        });
-
-        auto future_void = executor->load<void>([]() {
-            auto sleepDuration = std::chrono::milliseconds(100 + (std::rand() % 101));
-            std::this_thread::sleep_for(sleepDuration);
-        });
-
-        auto future_string = executor->load<std::string>([]() {
-            auto sleepDuration = std::chrono::milliseconds(100 + (std::rand() % 101));
-            std::this_thread::sleep_for(sleepDuration);
-            return std::string("Hello, World!");
-        });
-
-        // then
-        ASSERT_EQ(future_int32_t.wait_for(std::chrono::seconds(1)), std::future_status::ready);
-        ASSERT_EQ(future_int32_t.get(), 42);
-        ASSERT_EQ(future_void.wait_for(std::chrono::seconds(1)), std::future_status::ready);
-        ASSERT_NO_THROW(future_void.get());
-        ASSERT_EQ(future_string.wait_for(std::chrono::seconds(1)), std::future_status::ready);
-        ASSERT_EQ(future_string.get(), "Hello, World!");
-
-        executor->stop();
-    }
-    // Case 3: Fast task loading with multiple threads
-    {
-        // given
-        auto executor = TaskExecutor::create(4);
-        const int32_t tasksPerThread = 50;
-        const int32_t numThreads = 4;
-        std::vector<std::vector<std::future<int32_t>>> futures(numThreads);
-        std::vector<std::shared_ptr<Thread>> threads;
-        std::vector<std::future<void>> threadFutures;
-        
-        // when
-        for(int32_t threadId = 0; threadId < numThreads; ++threadId) {
-            auto thread = Thread::create();
-            auto future = thread->start([threadId, tasksPerThread, &executor, &futures]() {
-                for(int32_t taskId = 0; taskId < tasksPerThread; ++taskId) {
-                    auto taskFuture = executor->load<int32_t>([threadId, taskId]() {
-                        auto start = std::chrono::high_resolution_clock::now();
-                        while(true) {
-                            auto now = std::chrono::high_resolution_clock::now();
-                            auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - start);
-                            if(elapsed.count() >= 1000) break; // 1ms = 1000 microseconds
-                        }
-                        return threadId * 1000 + taskId;
-                    });
-                    futures[threadId].push_back(std::move(taskFuture));
-                }
+    // given
+    auto executor = TaskExecutor::create(4);
+    std::vector<std::future<void>> futures;
+    
+    // when
+    auto thread = Thread::create();
+    auto testFuture = thread->start([&executor, &futures](){
+        for(uint8_t i = 0; i < 10; ++i)
+        {
+            auto future = executor->load<void>([]() { 
+                auto sleepDuration = std::chrono::milliseconds(100);
+                std::this_thread::sleep_for(sleepDuration);
             });
-            threads.push_back(thread);
-            threadFutures.push_back(std::move(future));
+            futures.push_back(std::move(future));
         }
-        
-        for(auto& future : threadFutures) {
-            future.wait();
-        }
-        
-        // then
-        auto startTime = std::chrono::high_resolution_clock::now();
-        for(int32_t threadId = 0; threadId < numThreads; ++threadId) {
-            for(int32_t taskId = 0; taskId < tasksPerThread; ++taskId) {
-                auto status = futures[threadId][taskId].wait_for(std::chrono::seconds(5));
-                ASSERT_EQ(status, std::future_status::ready);
-                
-                int32_t result = futures[threadId][taskId].get();
-                int32_t expected = threadId * 1000 + taskId;
-                ASSERT_EQ(result, expected);
-            }
-        }
-        auto endTime = std::chrono::high_resolution_clock::now();
-        auto totalTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
-        
-        std::cout << "Total execution time: " << totalTime.count() << "ms for " 
-                    << (numThreads * tasksPerThread) << " tasks" << std::endl;
-        
-        ASSERT_LT(totalTime.count(), 150);
+    });
+    testFuture.wait();
 
-        executor->stop();
+    // then
+    for(auto& future : futures) 
+    { 
+        auto state = future.wait_for(std::chrono::seconds(3));
+        ASSERT_EQ(state, std::future_status::ready);
     }
+    executor->stop();
+}
+
+TEST(test_TaskExecutor, LoadWithMultiTypesReturn)
+{
+    // given
+    auto executor = TaskExecutor::create(4);
+
+    // when
+    auto future_int32_t = executor->load<int32_t>([]() {
+        auto sleepDuration = std::chrono::milliseconds(100 + (std::rand() % 101));
+        std::this_thread::sleep_for(sleepDuration);
+        return 42;
+    });
+
+    auto future_void = executor->load<void>([]() {
+        auto sleepDuration = std::chrono::milliseconds(100 + (std::rand() % 101));
+        std::this_thread::sleep_for(sleepDuration);
+    });
+
+    auto future_string = executor->load<std::string>([]() {
+        auto sleepDuration = std::chrono::milliseconds(100 + (std::rand() % 101));
+        std::this_thread::sleep_for(sleepDuration);
+        return std::string("Hello, World!");
+    });
+
+    // then
+    ASSERT_EQ(future_int32_t.wait_for(std::chrono::seconds(1)), std::future_status::ready);
+    ASSERT_EQ(future_int32_t.get(), 42);
+    ASSERT_EQ(future_void.wait_for(std::chrono::seconds(1)), std::future_status::ready);
+    ASSERT_NO_THROW(future_void.get());
+    ASSERT_EQ(future_string.wait_for(std::chrono::seconds(1)), std::future_status::ready);
+    ASSERT_EQ(future_string.get(), "Hello, World!");
+
+    executor->stop();
+}
+
+TEST(test_TaskExecutor, LoadByMultpleThread)
+{
+    // given
+    auto executor = TaskExecutor::create(4);
+    const int32_t tasksPerThread = 50;
+    const int32_t numThreads = 4;
+    std::vector<std::vector<std::future<int32_t>>> futures(numThreads);
+    std::vector<std::shared_ptr<Thread>> threads;
+    std::vector<std::future<void>> threadFutures;
+    
+    // when
+    for(int32_t threadId = 0; threadId < numThreads; ++threadId) {
+        auto thread = Thread::create();
+        auto future = thread->start([threadId, tasksPerThread, &executor, &futures]() {
+            for(int32_t taskId = 0; taskId < tasksPerThread; ++taskId) {
+                auto taskFuture = executor->load<int32_t>([threadId, taskId]() {
+                    auto start = std::chrono::high_resolution_clock::now();
+                    while(true) {
+                        auto now = std::chrono::high_resolution_clock::now();
+                        auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(now - start);
+                        if(elapsed.count() >= 1000) break; // 1ms = 1000 microseconds
+                    }
+                    return threadId * 1000 + taskId;
+                });
+                futures[threadId].push_back(std::move(taskFuture));
+            }
+        });
+        threads.push_back(thread);
+        threadFutures.push_back(std::move(future));
+    }
+    
+    for(auto& future : threadFutures) {
+        future.wait();
+    }
+    
+    // then
+    auto startTime = std::chrono::high_resolution_clock::now();
+    for(int32_t threadId = 0; threadId < numThreads; ++threadId) {
+        for(int32_t taskId = 0; taskId < tasksPerThread; ++taskId) {
+            auto status = futures[threadId][taskId].wait_for(std::chrono::seconds(5));
+            ASSERT_EQ(status, std::future_status::ready);
+            
+            int32_t result = futures[threadId][taskId].get();
+            int32_t expected = threadId * 1000 + taskId;
+            ASSERT_EQ(result, expected);
+        }
+    }
+    auto endTime = std::chrono::high_resolution_clock::now();
+    auto totalTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime);
+    
+    std::cout << "Total execution time: " << totalTime.count() << "ms for " 
+                << (numThreads * tasksPerThread) << " tasks" << std::endl;
+    
+    ASSERT_LT(totalTime.count(), 150);
+
+    executor->stop();
 }
 
 TEST(test_TaskExecutor, WorkStealing)
