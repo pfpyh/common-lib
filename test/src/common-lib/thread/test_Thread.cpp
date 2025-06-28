@@ -57,15 +57,15 @@ TEST(test_Thread, priority)
 TEST(test_Thread, async)
 {
     // given
-    bool value = false;
+    std::atomic<bool> value{false};
 
     // when
     auto future = Thread::async([&value](){
-        value = true; 
+        value.store(true); 
     });
     future.wait();
 
     // then
-    ASSERT_TRUE(value);
+    ASSERT_TRUE(value.load());
 }
 } // namespace common::test

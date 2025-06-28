@@ -125,9 +125,14 @@ auto Thread::__create() noexcept -> std::shared_ptr<Thread>
 
 auto Thread::async(std::function<void()>&& func) noexcept -> std::future<void>
 {
-    auto t = __create();
-    auto future = t->start(std::move(func));
-    t->detach();
+    auto promise = std::make_shared<std::promise<void>>();
+    auto future = promise->get_future();
+    
+    std::thread([promise, work = std::move(func)]() {
+        work();
+        promise->set_value();
+    }).detach();
+    
     return future;
 }
 } // namespace common
