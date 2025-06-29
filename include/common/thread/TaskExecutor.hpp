@@ -83,10 +83,16 @@ public :
         const uint32_t adjustedThreadCount = utils::next_pwr_of_2(threadCount);
         _running.store(true);
         _workers.reserve(adjustedThreadCount);
+        _queues.reserve(adjustedThreadCount);
+
         for(uint32_t i = 0; i < adjustedThreadCount; ++i)
         {
             auto queue = std::make_shared<WorkQueue>();
             _queues.push_back(std::move(queue));
+        }
+
+        for(uint32_t i = 0; i < adjustedThreadCount; ++i)
+        {
             auto worker = Thread::create();
             auto future = worker->start([index = i, this]() mutable {
                 while(_running.load())
