@@ -24,8 +24,16 @@ SOFTWARE.
 
 #include "common/communication/Event.hpp"
 
+#include <algorithm>
+
 namespace common
 {
+auto generate_subId() -> uint32_t
+{
+    static std::atomic<uint32_t> nextSubId{0};
+    return nextSubId.fetch_add(1);
+}
+
 EventBus::EventBus(uint32_t threadCount /* = EVENT_THREADS */)
     : _executor(TaskExecutor::create(threadCount)) {}
 
@@ -33,24 +41,98 @@ EventBus::~EventBus() { finalize(); }
 
 auto EventBus::finalize() -> void { _executor->stop(); }
 
-auto EventBus::subscribe(const std::string& topic, HANDLER handler) -> void
+auto EventBus::subscribe(const std::string& topic, Handler handler) -> SubID
 {
-    std::lock_guard<std::mutex> scopedLock(_lock);
-    _handlers[topic].push_back(std::move(handler));
+    const SubID subId = generate_subId();
+    auto subscriber = std::make_shared<HandlerInfo>(subId, handler);
+
+    {
+        std::lock_guard<std::mutex> lock(_subscriptionLock);
+        _subscriptions[subId] = subscriber;
+    }
+
+    // Copy-on-Write pattern
+    {
+        std::unique_lock<std::shared_mutex> lock(_topicLock);
+        
+        auto& topicData = _topics[topic];
+        if(!topicData)
+        {
+            topicData = std::make_shared<TopicData>();
+        }
+
+        auto newData = std::make_shared<TopicData>(*topicData);
+        newData->push_back(subscriber);
+
+        _topics[topic] = newData; // atomical swap
+    }
+
+    return subId;
 }
 
-auto EventBus::publish(const std::string& topic, const PAYLOAD& payload) -> void
+auto EventBus::unsubscribe(SubID subId) -> void
 {
-    std::lock_guard<std::mutex> scopedLock(_lock);
-    auto itor = _handlers.find(topic);
-    if(_handlers.end() != itor)
+    std::shared_ptr<HandlerInfo> handlerInfo;
+
     {
-        for(auto& handler : itor->second)
+        std::lock_guard<std::mutex> lock(_subscriptionLock);
+        auto itor = _subscriptions.find(subId);
+        if(itor != _subscriptions.end())
         {
-            _executor->load<void>([payload = payload, handler](){
-                handler(payload);
-            });
+            handlerInfo = itor->second.lock();
+            _subscriptions.erase(itor);
         }
+    }
+
+    if(!handlerInfo) { return; }
+
+    handlerInfo->_active.store(false);
+    if(_cleanupCount.fetch_add(1) % 10 == 0) 
+    {
+        cleanup_unsubscribers();
+        _cleanupCount.store(0);
+    }
+}
+
+auto EventBus::cleanup_unsubscribers() -> void
+{
+    _executor->load<void>([this]() {
+        std::unique_lock<std::shared_mutex> lock(_topicLock);
+
+        for(auto & [topic, topicData] : _topics) 
+        {
+            auto newTopicData = std::make_shared<TopicData>();
+            std::copy_if(topicData->begin(), topicData->end(), 
+                         std::back_inserter(*newTopicData),
+                         [](const auto& handlerInfo) {
+                            return handlerInfo->_active.load();
+            });
+            _topics[topic] = newTopicData;
+        }
+    });
+}
+
+auto EventBus::publish(const std::string& topic, const Payload& payload) -> void
+{
+    std::shared_ptr<TopicData> topicDataSnapshot;
+    {
+        std::shared_lock<std::shared_mutex> lock(_topicLock);
+        auto itor = _topics.find(topic);
+        if(itor != _topics.end())
+        {
+            topicDataSnapshot = itor->second;
+        }
+    }
+
+    if(!topicDataSnapshot) { return; }
+
+    for(const auto& handler : (*topicDataSnapshot))
+    {
+        if(!handler->_active.load()) { continue; }
+        _executor->load<void>([payload, handler](){
+            if(!handler->_active.load()) { return; }
+            handler->_handler(payload);
+        });
     }
 }
 } // namespace common

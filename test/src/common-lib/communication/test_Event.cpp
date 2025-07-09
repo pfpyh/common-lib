@@ -28,7 +28,7 @@
 
 namespace common::test
 {
-TEST(test_Event, SendingEvent)
+TEST(test_Event, publishEventToSubscriber)
 {
     // given
     EventBus bus;
@@ -36,12 +36,32 @@ TEST(test_Event, SendingEvent)
     std::vector<uint8_t> recvBuffer;
 
     // when
-    bus.subscribe("Test", [&recvBuffer](const std::vector<uint8_t>& payload){
+    const auto subid = bus.subscribe("Test", [&recvBuffer](const std::vector<uint8_t>& payload){
         recvBuffer = payload;
     });
     bus.publish("Test", sendBuffer);
-    
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    bus.unsubscribe(subid);
+    bus.finalize();
+
+    // then
+    ASSERT_TRUE(recvBuffer == sendBuffer);
+}
+
+TEST(test_Event, sendingEvent)
+{
+    // given
+    EventBus bus;
+    const std::vector<uint8_t> sendBuffer{0x00, 0x01, 0x02, 0x03, 0x04, 0x05};
+    std::vector<uint8_t> recvBuffer;
+
+    // when
+    const auto subid = bus.subscribe("Test", [&recvBuffer](const std::vector<uint8_t>& payload){
+        recvBuffer = payload;
+    });
+    bus.publish("Test", sendBuffer);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    bus.unsubscribe(subid);
     bus.finalize();
 
     // then
@@ -52,7 +72,7 @@ TEST(test_Event, SendingEvent)
     }
 }
 
-TEST(test_Event, MultThreading)
+TEST(test_Event, multThreading)
 {
     // given
     EventBus bus;

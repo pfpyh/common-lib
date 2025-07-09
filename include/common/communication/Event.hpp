@@ -33,6 +33,8 @@ SOFTWARE.
 #include <vector>
 #include <unordered_map>
 #include <stdint.h>
+#include <atomic>
+#include <shared_mutex>
 
 namespace common
 {
@@ -44,14 +46,33 @@ struct Event
 
 class COMMON_LIB_API EventBus final : public NonCopyable
 {
-    using TOPIC = std::string;
-    using PAYLOAD = std::vector<uint8_t>;
-    using HANDLER = std::function<void(const PAYLOAD&)>;
+    using Topic = std::string;
+    using Payload = std::vector<uint8_t>;
+    using Handler = std::function<void(const Payload&)>;
+    using SubID = uint32_t;
+
+    struct HandlerInfo
+    {
+        SubID _subId;
+        Handler _handler;
+        std::atomic<bool> _active{true};
+
+        HandlerInfo(SubID subId, Handler handler)
+            : _subId(subId), _handler(handler) {}
+    };
+
+    using TopicData = std::vector<std::shared_ptr<HandlerInfo>>;
 
 private :
     std::shared_ptr<common::TaskExecutor> _executor;
-    std::unordered_map<std::string, std::vector<HANDLER>> _handlers;
-    std::mutex _lock;
+    std::vector<std::shared_ptr<HandlerInfo>> _handlers;
+
+    std::shared_mutex _topicLock;
+    std::unordered_map<Topic, std::shared_ptr<TopicData>> _topics;
+
+    std::mutex _subscriptionLock;
+    std::unordered_map<SubID, std::weak_ptr<HandlerInfo>> _subscriptions;
+    std::atomic<uint8_t> _cleanupCount{0};
 
 public :
     explicit EventBus(uint32_t threadCount = EVENT_THREADS);
@@ -60,8 +81,12 @@ public :
 public :
     auto finalize() -> void;
 
-    auto subscribe(const std::string& topic, HANDLER handler) -> void;
+    auto subscribe(const std::string& topic, Handler handler) -> SubID;
+    auto unsubscribe(SubID subId) -> void;
 
-    auto publish(const std::string& topic, const PAYLOAD& payload) -> void;
+    auto publish(const std::string& topic, const Payload& payload) -> void;
+
+private :
+    auto cleanup_unsubscribers() -> void;
 };
 } // namespace common
