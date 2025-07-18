@@ -1,0 +1,10 @@
+namespace common.test;
+
+table TestDataType
+{
+    field1: int32;
+    field2: int32;
+    field3: string;
+}
+
+root_type TestDataType;

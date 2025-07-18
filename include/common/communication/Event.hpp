@@ -38,14 +38,9 @@ SOFTWARE.
 
 namespace common
 {
-struct Event
-{
-    std::string _topic;
-    std::vector<uint8_t> _payload;
-};
-
 class COMMON_LIB_API EventBus final : public NonCopyable
 {
+public :
     using Topic = std::string;
     using Payload = std::vector<uint8_t>;
     using Handler = std::function<void(const Payload&)>;

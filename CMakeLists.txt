@@ -3,26 +3,27 @@ cmake_minimum_required(VERSION 3.16)
 set(TARGET_NAME common-lib)
 set(CMAKE_CXX_STANDARD 17)
 
+if(NOT DEFINED COMMON_LIB_BUILD_TESTING)
+    set(COMMON_LIB_BUILD_TESTING ON)
+endif()
+
 project(${TARGET_NAME})
 
+include(cmake/CommonLib.cmake)
 include(CTest)
 enable_testing()
 
-# EventBus 설정 ########################################
+# EventBus Configuration ##################################################
 set(EVENT_THREADS 4 CACHE STRING "Number of threads used by EventBus (default: 4)")
 message(STATUS "EVENT_THREADS=${EVENT_THREADS}")
-##########################################################
+###########################################################################
 
-# GoogleTest ############################################
+# GoogleTest ##############################################################
 set(GTEST_ROOT ${CMAKE_CURRENT_LIST_DIR}/libs/googletest)
 set(GTEST_INCLUDES ${GTEST_ROOT}/googletest/include
                    ${GTEST_ROOT}/googlemock/include)
 set(GTEST_LINKS ${CMAKE_CURRENT_BINARY_DIR}/lib)
-
-message(STATUS GTEST_ROOT=${GTEST_ROOT})
-message(STATUS GTEST_INCLUDES=${GTEST_INCLUDES})
-message(STATUS GTEST_LINKS=${GTEST_LINKS})
-##########################################################
+###########################################################################
 
 if (WIN32)
     add_definitions(-DWINDOWS)
@@ -62,6 +63,8 @@ set(LINKS ${CMAKE_CURRENT_BINARY_DIR}
           ${CMAKE_CURRENT_BINARY_DIR}/Release
           ${LINKS})
 
+set(DEPENDENCIES FlatBuffers)
+
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_LIST_DIR}/src/*.cpp)
 
 add_library(${TARGET_NAME} SHARED ${SOURCES})
@@ -72,13 +75,16 @@ target_include_directories(${TARGET_NAME}
 target_link_directories(${TARGET_NAME}
                         PRIVATE ${LINKS})
 
+target_link_libraries(${TARGET_NAME} 
+                      PRIVATE ${DEPENDENCIES})
+
 target_compile_definitions(${TARGET_NAME} 
                            PRIVATE 
                            BUILDING_COMMON_LIB
                            PUBLIC 
                            EVENT_THREADS=${EVENT_THREADS})
 
-# pybind11 ################################################
+# pybind11 ################################################################
 if(PYTHON_BUILD)
     set(PY_TARGET_NAME py_common_lib)
 
@@ -91,7 +97,8 @@ if(PYTHON_BUILD)
 
     set(DEPENDENCIES ${TARGET_NAME}
                      pybind11::module 
-                     Python3::Python) 
+                     Python3::Python
+                     ${DEPENDENCIES}) 
 
     file(GLOB_RECURSE PY_SOURCES ${CMAKE_CURRENT_LIST_DIR}/python/*.cpp)
 
@@ -109,9 +116,9 @@ if(PYTHON_BUILD)
     target_compile_definitions(${PY_TARGET_NAME}
                                PRIVATE EVENT_THREADS=${EVENT_THREADS})
 endif()
-###########################################################
-
-enable_testing()
+###########################################################################
 
 add_subdirectory(libs)
-add_subdirectory(test)
+if(COMMON_LIB_BUILD_TESTING)
+    add_subdirectory(test)
+endif()
