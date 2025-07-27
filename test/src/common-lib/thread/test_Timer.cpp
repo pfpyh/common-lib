@@ -70,7 +70,6 @@ TEST(test_Timer, stop)
 
 TEST(test_Timer, async_start)
 {
-
     // given
     std::atomic<bool> isRunning = true;
     bool result = false;
@@ -88,7 +87,7 @@ TEST(test_Timer, async_start)
 
     // when
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    isRunning.exchange(false);
+    isRunning.store(false);
     future->wait();
 
     // then

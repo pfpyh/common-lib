@@ -46,9 +46,9 @@ namespace common
  * @note A derived class must implement the pure virtual functions start() and stop() to execute a task.
  */
 class COMMON_LIB_API Timer : public NonCopyable, 
-                             public UniqueFactory<Timer>
+                             public UniqueFactory<Timer, std::function<void(Timer*)>>
 {
-    friend class UniqueFactory<Timer>;
+    friend class UniqueFactory<Timer, std::function<void(Timer*)>>;
 
 public :
     using Function = std::function<bool()>;
@@ -66,7 +66,7 @@ private :
      *
      * @return A new timer that can execute the given function at the specified interval.
      */
-    static auto __create(Function&& func, Interval interval) noexcept -> std::unique_ptr<Timer>;
+    static auto __create(Function&& func, Interval interval) noexcept -> std::unique_ptr<Timer, std::function<void(Timer*)>>;
 
 public :
     /**
@@ -100,4 +100,9 @@ public :
      */
     virtual auto running() noexcept -> bool = 0;
 };
+
+namespace detail
+{
+    class TimerDetail;
+} // namespace detail
 } // namespace common

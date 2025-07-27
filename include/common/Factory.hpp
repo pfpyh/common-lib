@@ -71,7 +71,7 @@ public :
  * @tparam Derived The type of object to be created.
  * @tparam Args The types of arguments to be passed to the create function.
  */
-template <typename Derived>
+template <typename Derived, typename Deleter = std::default_delete<Derived>>
 class UniqueFactory
 {
 public :
@@ -82,7 +82,7 @@ public :
      * @return A unique pointer to an object of the derived type.
      */
     template <typename... Args>
-    static auto create(Args... args) noexcept -> std::unique_ptr<Derived>
+    static auto create(Args... args) noexcept -> std::unique_ptr<Derived, Deleter>
     {
         return Derived::__create(std::forward<Args>(args)...);
     }
