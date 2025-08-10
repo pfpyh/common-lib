@@ -101,7 +101,7 @@ public :
     {
         size_t readSize = 0;
     #if defined(WIN32)
-        if((readSize = recv(get_conn(), reinterpret_cast<char*>(buffer), size, 0)) < 0) 
+        if((readSize = recv(get_conn(), reinterpret_cast<char*>(buffer), size, 0)) == 0) 
         {
             const int32_t errNo = errno;
             std::string what("Socket error:");
@@ -109,7 +109,7 @@ public :
             throw CommunicationException(what);
         }
     #elif defined(LINUX)
-        if((readSize = ::read(get_conn(), buffer, size)) < 0)
+        if((readSize = ::read(get_conn(), buffer, size)) == 0)
         {
             const int32_t errNo = errno;
             std::string what("Socket error:");

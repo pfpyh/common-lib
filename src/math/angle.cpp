@@ -80,7 +80,7 @@ auto Euler::from_matrix(const Matrix<double>& m) -> Euler
 
 auto Euler::from_acc(const double x,
                      const double y,
-                     const double z) noexcept -> Euler
+                     [[maybe_unused]] const double z) noexcept -> Euler
 {
     Euler e;
     e._pitch = std::asin(x / 9.8);
@@ -97,9 +97,9 @@ auto Euler::from_acc(const double x,
 
 Quaternion::Quaternion() {};
 Quaternion::Quaternion(const double w, const double x, const double y, const double z) : _w(w), _x(x), _y(y), _z(z) {};
-Quaternion::Quaternion(const Quaternion& q) : _x(q._x), _y(q._y), _z(q._z), _w(q._w) {};
+Quaternion::Quaternion(const Quaternion& q) : _w(q._w), _x(q._x), _y(q._y), _z(q._z) {};
 Quaternion::Quaternion(Quaternion&& q) noexcept
-    : _x(std::move(q._x)), _y(std::move(q._y)), _z(std::move(q._z)), _w(std::move(q._w)) {};
+    : _w(std::move(q._w)), _x(std::move(q._x)), _y(std::move(q._y)), _z(std::move(q._z)) {};
 
 auto Quaternion::to_euler() noexcept -> Euler
 {

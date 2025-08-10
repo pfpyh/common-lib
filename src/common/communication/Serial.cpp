@@ -144,19 +144,7 @@ auto DetailSerial::open(const std::string& port,
         return _isOpen;
     }
 
-    int32_t CBRBaudrate = 0;
-    switch (baudrate._value)
-    {
-        case Baudrate::_9600: CBRBaudrate = CBR_9600; break;
-        case Baudrate::_14400: CBRBaudrate = CBR_14400; break;
-        case Baudrate::_19200: CBRBaudrate = CBR_19200; break;
-        case Baudrate::_38400: CBRBaudrate = CBR_38400; break;
-        case Baudrate::_57600: CBRBaudrate = CBR_57600; break;
-        case Baudrate::_115200: CBRBaudrate = CBR_115200; break;
-        case Baudrate::_128000: CBRBaudrate = CBR_128000; break;
-        case Baudrate::_256000: CBRBaudrate = CBR_256000; break;
-        default: CBRBaudrate = CBR_9600; break;
-    };
+    int32_t CBRBaudrate = baudrate.to_baudrate();
 
     dcbSerialParams.BaudRate = CBRBaudrate;
     dcbSerialParams.ByteSize = 8;
@@ -204,8 +192,8 @@ auto DetailSerial::open(const std::string& port,
 
     struct termios options;
     tcgetattr(_fd, &options);
-    cfsetispeed(&options, B9600);
-    cfsetospeed(&options, B9600);
+    cfsetispeed(&options, baudrate.to_speed());
+    cfsetospeed(&options, baudrate.to_speed());
     options.c_cflag |= (CLOCAL | CREAD);
     options.c_cflag &= ~PARENB;
     options.c_cflag &= ~CSTOPB;

@@ -76,5 +76,6 @@ public :
     auto error(const std::string& format) -> void;
 };
 
-static Logger __logger;
+// Warning False Alram
+[[maybe_unused]] static Logger __logger;
 } // namespace common

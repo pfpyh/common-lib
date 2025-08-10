@@ -49,13 +49,10 @@ public :
     enum type : uint8_t
     {
         _9600,
-        _14400,
         _19200,
         _38400,
         _57600,
         _115200,
-        _128000,
-        _256000,
     };
 
     type _value = _9600;
@@ -70,9 +67,6 @@ public :
             case 9600:
                 _value = _9600;
                 break;
-            case 14400:
-                _value = _14400;
-                break;
             case 19200:
                 _value = _19200;
                 break;
@@ -84,12 +78,6 @@ public :
                 break;
             case 115200:
                 _value = _115200;
-                break;
-            case 128000:
-                _value = _128000;
-                break;
-            case 256000:
-                _value = _256000;
                 break;
             default:
                 _value = _9600;
@@ -112,16 +100,41 @@ public :
         switch(_value)
         {
             case _9600 : return 9600;
-            case _14400 : return 14400;
             case _19200 : return 19200;
             case _38400 : return 38400;
             case _57600 : return 57600;
             case _115200 : return 115200;
-            case _128000 : return 128000;
-            case _256000 : return 256000;
             default : return 0;
         }
     }
+
+#if defined(WINDOWS)
+    auto to_baudrate() const -> int32_t
+    {
+        switch (_value)
+        {
+            case Baudrate::_9600: return CBR_9600;
+            case Baudrate::_19200: return CBR_19200;
+            case Baudrate::_38400: return CBR_38400;
+            case Baudrate::_57600: return CBR_57600;
+            case Baudrate::_115200: return CBR_115200;
+            default: return CBR_9600;
+        };
+    }
+#elif defined(LINUX)
+    auto to_speed() const -> speed_t
+    {
+        switch (_value)
+        {
+            case Baudrate::_9600: return B9600;
+            case Baudrate::_19200: return B19200;
+            case Baudrate::_38400: return B38400;
+            case Baudrate::_57600: return B57600;
+            case Baudrate::_115200: return B115200;
+            default: return B9600;
+        }
+    }
+#endif
 };
 
 class COMMON_LIB_API Serial : public NonCopyable
