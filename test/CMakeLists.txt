@@ -1,8 +1,6 @@
 set(TARGET_NAME test-${TARGET_NAME})
 project(${TARGET_NAME})
 
-
-
 include(../cmake/CommonLib.cmake)
 compile_flatbuffer_schemas(${TARGET_NAME}
                           "${CMAKE_CURRENT_SOURCE_DIR}/schema"
@@ -39,4 +37,7 @@ target_link_libraries(${TARGET_NAME}
 include(GoogleTest)
 gtest_discover_tests(${TARGET_NAME})
 
-add_subdirectory(application)
+if(UNIX)
+    add_subdirectory(application)
+endif()
+

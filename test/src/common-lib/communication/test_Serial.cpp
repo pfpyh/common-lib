@@ -22,8 +22,6 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#ifdef TEMPORARY_DISABLED
-
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
@@ -240,5 +238,3 @@ TEST(test_Serial, write)
     }
 }
 } // namespace common::test
-
-#endif

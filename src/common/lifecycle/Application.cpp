@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
+#if defined(LINUX)
+
 #include "common/lifecycle/Application.h"
 #include "common/logging/Logger.hpp"
 
@@ -29,7 +31,7 @@ SOFTWARE.
 #include <string>
 #include <filesystem>
 
-#ifdef WINDOWS
+#if defined(WINDOWS)
     #include <windows.h>
     #include <psapi.h>
 #elif defined(LINUX)
@@ -136,3 +138,5 @@ auto Application::signal_handler(int32_t signal) -> void
     }
 }
 } // namespace common
+
+#endif

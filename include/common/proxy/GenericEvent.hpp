@@ -32,7 +32,7 @@ SOFTWARE.
 
 namespace common
 {
-class COMMON_LIB_API GenericEventBus
+class GenericEventBus
 {
 private :
     EventBus _bus;
