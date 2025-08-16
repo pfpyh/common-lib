@@ -37,7 +37,5 @@ target_link_libraries(${TARGET_NAME}
 include(GoogleTest)
 gtest_discover_tests(${TARGET_NAME})
 
-if(UNIX)
-    add_subdirectory(application)
-endif()
+add_subdirectory(application)
 

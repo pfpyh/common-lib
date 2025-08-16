@@ -22,14 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#if defined(LINUX)
-
 #include "common/lifecycle/Application.h"
 #include "common/logging/Logger.hpp"
 
 #include <signal.h>
 #include <string>
 #include <filesystem>
+#include <thread>
+#include <iostream>
 
 #if defined(WINDOWS)
     #include <windows.h>
@@ -41,6 +41,26 @@ SOFTWARE.
 
 namespace common
 {
+#if defined(WINDOWS)
+static HANDLE g_eventHandler = nullptr;
+
+BOOL WINAPI ConsoleCtrlHandler(DWORD dwCtrlType)
+{
+    switch (dwCtrlType) 
+    {
+        case CTRL_C_EVENT:
+        case CTRL_BREAK_EVENT:
+        case CTRL_CLOSE_EVENT:
+        case CTRL_LOGOFF_EVENT:
+        case CTRL_SHUTDOWN_EVENT:
+            SetEvent(g_eventHandler);
+            return TRUE;
+        default:
+            return FALSE;
+    }
+}
+#endif
+
 auto get_binary_path() -> std::string
 {
     std::string path;
@@ -81,18 +101,57 @@ auto get_binary_name(const std::string& fullPath) -> std::string
     }
 }
 
-Application::~Application()
-{
-    _shutdown.store(true);
-}
+Application::~Application() = default;
 
-auto Application::run() -> void
+auto Application::run() -> int32_t
 {
     _path = get_binary_path();
     if(!_path.empty()) { _name = get_binary_name(_path); }
 
     _INFO_("Hello, my name is %s", _name.c_str());
+#if defined(WINDOWS)
+    g_eventHandler = CreateEvent(nullptr, TRUE, FALSE, nullptr);
 
+    if(!g_eventHandler)
+    {
+        _ERROR_("Failed to create ConsoleEventHandler");
+        return -1;
+    }
+
+    if(!SetConsoleCtrlHandler(ConsoleCtrlHandler, true))
+    {
+        _ERROR_("Failed to set ConsoleCtrlHandler");
+        CloseHandle(g_eventHandler);
+        return -1;
+    }
+
+    _t->start([this]() {
+        _INFO_("%s is initializing", _name.c_str());
+        auto bootupFuture = bootup();
+        if(bootupFuture) { bootupFuture->wait(); }
+        _INFO_("%s is running", _name.c_str());
+
+        while (!_shutdown.load()) 
+        {
+            DWORD signal = WaitForSingleObject(g_eventHandler, 1000); // 1sec timeout
+            if (signal == WAIT_OBJECT_0) // Receive terminate signal
+            {
+                _INFO_("%s receiving shutdown signal(%d)", _name.c_str(), signal);
+                signal_handler(SIGTERM);
+            }
+        }
+
+        _INFO_("%s going to shutdown", _name.c_str());
+        auto shutdownFuture = shutdown();
+        if(shutdownFuture) { shutdownFuture->wait(); }
+        _INFO_("%s will be closed", _name.c_str());
+        
+    }).wait();
+
+    SetConsoleCtrlHandler(ConsoleCtrlHandler, FALSE);
+    CloseHandle(g_eventHandler);
+    g_eventHandler = nullptr;
+#elif defined(LINUX)
     sigset_t set;
     sigemptyset(&set);
     sigaddset(&set, SIGTERM);
@@ -122,8 +181,10 @@ auto Application::run() -> void
         if(shutdownFuture) { shutdownFuture->wait(); }
         _INFO_("%s will be closed", _name.c_str());
     }).wait();
+#endif
     
     _INFO_("Bye, %s", _name.c_str());
+    return 0;
 }
 
 auto Application::signal_handler(int32_t signal) -> void
@@ -138,5 +199,3 @@ auto Application::signal_handler(int32_t signal) -> void
     }
 }
 } // namespace common
-
-#endif

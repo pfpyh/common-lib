@@ -24,6 +24,7 @@ SOFTWARE.
 
 #pragma once
 
+#include "CommonHeader.hpp"
 #include "common/NonCopyable.hpp"
 #include "common/thread/Thread.hpp"
 
@@ -34,8 +35,10 @@ namespace common
 {
 using Future = std::shared_ptr<std::future<void>>;
 
-class Application : public NonCopyable
+class COMMON_LIB_API Application : public NonCopyable
 {
+    SINGLE_INSTANCE_ONLY(Application);
+
 private :
     std::string _name{"Application"};
     std::string _path;
@@ -46,7 +49,7 @@ public :
     virtual ~Application();
 
 public :
-    auto run() -> void;
+    auto run() -> int32_t;
 
 private :
     auto signal_handler(int32_t signal) -> void;

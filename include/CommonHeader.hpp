@@ -24,7 +24,10 @@ SOFTWARE.
 
 #pragma once
 
-#ifdef WINDOWS
+#include <cassert>
+#include <atomic>
+
+#if defined(WINDOWS)
     #ifdef BUILDING_COMMON_LIB
         #define COMMON_LIB_API __declspec(dllexport)
     #else
@@ -35,3 +38,23 @@ SOFTWARE.
         #define COMMON_LIB_API
     #endif
 #endif
+
+#define SINGLE_INSTANCE_ONLY(ClassName) \
+private: \
+    static inline std::atomic<bool> _isSingleInstance{false}; \
+    class InstanceGuard \
+    { \
+    public: \
+        InstanceGuard() \
+        { \
+            bool expected = false; \
+            if (!ClassName::_isSingleInstance.compare_exchange_strong(expected, true)) { \
+                assert(false && #ClassName " can be created only once!"); \
+                std::terminate(); \
+            } \
+        } \
+        ~InstanceGuard() \
+        { \
+            ClassName::_isSingleInstance.store(false); \
+        } \
+    } _instanceGuard;
