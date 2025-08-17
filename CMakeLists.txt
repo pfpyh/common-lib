@@ -28,8 +28,6 @@ set(GTEST_LINKS ${CMAKE_CURRENT_BINARY_DIR}/lib)
 if (WIN32)
     add_definitions(-DWINDOWS)
     #add_compile_options(/Wall)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebug")
-    #set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
 
     foreach(OUTPUTCONFIG ${CMAKE_CONFIGURATION_TYPES})
         string(TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG_UPPER)
