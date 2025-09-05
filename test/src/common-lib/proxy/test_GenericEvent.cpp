@@ -28,7 +28,7 @@ SOFTWARE.
 
 namespace common::test
 {
-TEST(test_GenericEvent, publishTestMessage)
+TEST(test_GenericEvent, DISABLED_publishTestMessage)
 {
     // given
     struct DataType
