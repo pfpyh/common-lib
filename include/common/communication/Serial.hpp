@@ -137,6 +137,26 @@ public :
 #endif
 };
 
+struct EscapeSequence
+{
+    enum type : uint8_t
+    {
+        NULL_END = 0,     /*  \0  */
+        LINE_FEED,        /*  \n  */
+        CARRIAGE_RETURN,  /* \r\n */
+        MAX,
+    };
+};
+
+/**
+ * @brief Cross-platform serial communication interface
+ * 
+ * This class provides a unified interface for serial port communication across different platforms.
+ * It abstracts the underlying platform-specific implementation (Windows HANDLE / Linux file descriptor)
+ * 
+ * @warning Ensure proper resource management by calling close() before destruction.
+ *          The destructor will automatically close open connections.
+ */
 class COMMON_LIB_API Serial : public NonCopyable
                             , public Factory<Serial>
 {
@@ -146,15 +166,96 @@ public :
     virtual ~Serial() = default;
 
 public :
+    /**
+     * @brief Opens a serial port connection
+     * 
+     * Establishes connection to the specified serial port with the given baudrate and access mode.
+     * The mode parameter controls read/write permissions using SERIAL_READ and SERIAL_WRITE flags.
+     * 
+     * Platform-specific behavior:
+     * - Windows: Uses CreateFile() with GENERIC_READ/WRITE flags, sets 8N1 configuration and timeouts
+     * - Linux: Uses open() with O_RDWR/O_RDONLY/O_WRONLY flags, configures termios for 8N1
+     * 
+     * @param port The serial port identifier (e.g., "COM1" on Windows, "/dev/ttyUSB0" on Linux)
+     * @param baudrate Communication speed setting (9600, 19200, 38400, 57600, or 115200)
+     * @param mode Access mode flags (SERIAL_READ | SERIAL_WRITE for full duplex)
+     * @return bool True if connection established successfully, false otherwise
+     * 
+     * @note Multiple calls to open() without close() will fail. Check is_open() before opening.
+     *       Serial configuration is fixed to 8 data bits, no parity, 1 stop bit (8N1).
+     */
     virtual auto open(const std::string& port,
                       const Baudrate baudrate,
                       const uint8_t mode) noexcept -> bool = 0;
+
+    /**
+     * @brief Closes the serial port connection
+     * 
+     * Safely closes the active serial port connection and releases system resources.
+     * This operation is idempotent - multiple calls are safe.
+     * 
+     * @note Always call close() before opening a different port or when done with communication.
+     */
     virtual auto close() noexcept -> void = 0;
+
+    /**
+     * @brief Checks if the serial port is currently open
+     * 
+     * @return bool True if a serial port connection is active, false otherwise
+     */
     virtual auto is_open() noexcept -> bool = 0;
-    virtual auto readline() noexcept -> std::string = 0;
-    virtual auto write(const char* buffer, const size_t size) noexcept -> bool = 0;
+
+    virtual auto read(char* buffer, size_t size) noexcept -> bool = 0;
+
+    /**
+     * @brief Reads a line from the serial port
+     * 
+     * Reads data from the serial port until a newline character is encountered or no more data is available.
+     * 
+     * Platform-specific behavior:
+     * - Windows: Reads one character at a time until '\n' is found, with configured timeouts
+     * - Linux: Reads into buffer and accumulates until '\n' is found in the result string
+     * 
+     * @return std::string The received line data (may include '\r' but excludes '\n')
+     * 
+     * @note Returns accumulated data even if newline is not found (partial reads).
+     *       Empty string indicates read failure or closed port.
+     *       Timeout behavior is platform-dependent (50ms base + 10ms per byte on Windows).
+     */
+#if defined(WINDOWS)
+    virtual auto readline(EscapeSequence::type escapeSequence = EscapeSequence::CARRIAGE_RETURN) noexcept -> std::string = 0;
+#else
+    virtual auto readline(EscapeSequence::type escapeSequence = EscapeSequence::LINE_FEED) noexcept -> std::string = 0;
+#endif
+
+    /**
+     * @brief Writes data to the serial port
+     * 
+     * Sends the specified buffer contents to the connected serial device.
+     * 
+     * Platform-specific behavior:
+     * - Windows: Uses WriteFile() API, returns success based on API call result
+     * - Linux: Uses write() system call, returns true if any bytes written (> 0)
+     * 
+     * @param buffer Pointer to the data buffer to transmit
+     * @param size Number of bytes to write from the buffer
+     * @return bool True if write operation completed successfully, false otherwise
+     * 
+     * @note Linux implementation returns true for partial writes (> 0 bytes written).
+     *       Windows implementation relies on WriteFile() return value.
+     *       Ensure buffer remains valid during the entire write operation.
+     */
+    virtual auto write(const char* buffer, size_t size) noexcept -> bool = 0;
 
 public :
+    /**
+     * @brief Factory method for creating Serial instances
+     * 
+     * Creates a platform-specific implementation of the Serial interface.
+     * This method is used internally by the Factory base class.
+     * 
+     * @return std::shared_ptr<Serial> Shared pointer to a new Serial instance
+     */
     static auto __create() noexcept -> std::shared_ptr<Serial>;
 };
 
@@ -229,8 +330,13 @@ public :
               const uint8_t mode) noexcept -> bool override;
     auto close() noexcept -> void override;
     inline auto is_open() noexcept -> bool override { return _isOpen; }
-    auto readline() noexcept -> std::string override;
-    auto write(const char* buffer, const size_t size) noexcept -> bool override;
+    auto read(char* buffer, size_t size) noexcept -> bool override;
+#if defined(WINDOWS)
+    auto readline(EscapeSequence::type escapeSequence = EscapeSequence::CARRIAGE_RETURN) noexcept -> std::string override;
+#else
+    auto readline(EscapeSequence::type escapeSequence = EscapeSequence::LINE_FEED) noexcept -> std::string override;
+#endif
+    auto write(const char* buffer, size_t size) noexcept -> bool override;
 };
 } // namespace detail
 } // namespace common

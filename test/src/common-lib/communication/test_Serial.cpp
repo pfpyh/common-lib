@@ -27,10 +27,12 @@ SOFTWARE.
 
 #include "common/communication/Serial.hpp"
 
+#include <array>
+
 namespace common::detail::test
 {
 #if defined(WINDOWS)
-class MockSerialHandler : public SerialHandler 
+class MockSerialHandler : public SerialHandler
 {
 public:
     MOCK_METHOD(HANDLE, Wrapper_CreateFile, (LPCSTR, DWORD, DWORD, LPSECURITY_ATTRIBUTES, DWORD, DWORD, HANDLE), (override));
@@ -42,7 +44,7 @@ public:
     MOCK_METHOD(bool, Wrapper_SetCommTimeouts, (HANDLE, LPCOMMTIMEOUTS), (override));
 };
 #elif defined(LINUX)
-class MockSerialHandler : public SerialHandler 
+class MockSerialHandler : public SerialHandler
 {
 public:
     MOCK_METHOD(int32_t, Wrapper_Open, (const std::string&, int32_t), (override));
@@ -153,6 +155,43 @@ TEST(test_Serial, open)
     }
 }
 
+#if defined(WINDOWS)
+TEST(test_Serial, read)
+{
+    // given
+    const std::array<char, 4> input{'T', 'E', 'S', 'T'};
+
+    auto mockHandler = std::make_shared<MockSerialHandler>();
+    EXPECT_CALL(*mockHandler, Wrapper_ReadFile(::testing::_,
+                                               ::testing::_,
+                                               ::testing::_,
+                                               ::testing::_,
+                                               ::testing::_))
+        .WillRepeatedly([&input](HANDLE hFile,
+                                 LPVOID lpBuffer,
+                                 DWORD nNumberOfBytesToWrite,
+                                 LPDWORD lpNumberOfBytesWritten,
+                                 LPOVERLAPPED lpOverlapped) -> bool {
+            static size_t index = 0;
+            if(index == 4) { return false; }
+            *reinterpret_cast<char*>(lpBuffer) = input[index++];
+            return true;
+    });
+
+    // when
+    DetailSerial serial(mockHandler);
+    char buffer[4] = {0, };
+    auto success = serial.read(buffer, 4);
+
+    // then
+    ASSERT_TRUE(success);
+    for(uint8_t i = 0; i < 4; ++i)
+    {
+        ASSERT_EQ(buffer[i], input.at(i));
+    }
+}
+#endif
+
 TEST(test_Serial, readline)
 {
     using namespace ::testing;
@@ -170,7 +209,7 @@ TEST(test_Serial, readline)
             SetArgPointee<3>(1),
             Return(true)))
         .WillOnce(DoAll(
-            WithArg<1>([](void* buffer) { *static_cast<char*>(buffer) = '\n'; }),
+            WithArg<1>([](void* buffer) { *static_cast<char*>(buffer) = '\0'; }),
             SetArgPointee<3>(1),
             Return(true)))
         .WillRepeatedly(Return(false));
@@ -191,7 +230,7 @@ TEST(test_Serial, readline)
     DetailSerial serial(mockHandler);
 
     // when
-    const std::string result(serial.readline());
+    const std::string result(serial.readline(EscapeSequence::NULL_END));
 
     // then
     ASSERT_EQ(result, "Hi");

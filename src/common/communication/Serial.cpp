@@ -25,6 +25,8 @@ SOFTWARE.
 #include "common/communication/Serial.hpp"
 #include "common/logging/Logger.hpp"
 
+#include <array>
+
 namespace common
 {
 auto Serial::__create() noexcept -> std::shared_ptr<Serial>
@@ -220,11 +222,42 @@ auto DetailSerial::close() noexcept -> void
     }
 }
 
-auto DetailSerial::readline() noexcept -> std::string
+auto DetailSerial::read(char* buffer, size_t size) noexcept -> bool
 {
 #if defined(WINDOWS)
     char ch;
-    std::string line = "";
+    DWORD bytesRead;
+    size_t readSize = 0;
+    while(true)
+    {
+        if (!_handler->Wrapper_ReadFile(_handle, &ch, 1, &bytesRead, nullptr)) { break; }
+        if (bytesRead > 0) 
+        {
+            if(readSize < size) { buffer[readSize++] = ch; }
+            else { break; } // buffer is full
+        }
+    }
+    return (readSize > 0);
+#elif defined(LINUX)
+    int32_t readSize = _handler->Wrapper_Read(_fd, buffer, (size - 1));
+    return (readSize > 0);
+#endif
+}
+
+auto DetailSerial::readline(EscapeSequence::type escapeSequence) noexcept -> std::string
+{
+    static std::array<std::string, EscapeSequence::MAX> EndOfLine{ 
+        std::string("\0"),
+        std::string("\n"),
+        std::string("\r\n"),
+    };
+    static_assert(EndOfLine.size() == EscapeSequence::MAX, 
+                  "Size of EndOfLine should be fulfilled.");
+    const std::string& end = EndOfLine[static_cast<size_t>(escapeSequence)];
+    std::string line;
+#if defined(WINDOWS)
+    char ch;
+    size_t endIdx = 0;
 
     DWORD bytesRead;
     while (true) 
@@ -232,32 +265,65 @@ auto DetailSerial::readline() noexcept -> std::string
         if (!_handler->Wrapper_ReadFile(_handle, &ch, 1, &bytesRead, nullptr)) { break; }
         if (bytesRead > 0) 
         {
-            if (ch == '\n') { break; }
-            line += ch;
+            if(endIdx < end.length() && ch == end[endIdx])
+            {
+                ++endIdx;
+                line += ch;
+                if(endIdx == end.length()) { break; }
+            }
+            else
+            {
+                if(endIdx > 0)
+                {
+                    for(size_t i = 0; i < endIdx; ++i) { line += end[i]; }
+                    endIdx = 0;
+
+                    if(ch == end[0]) { endIdx = 1; }
+                    else { line += ch; }
+                }
+                else { line += ch; }
+            }
         }
     }
-    return line;
 #elif defined(LINUX)
-    std::string result;
     char buffer[256];
-    int32_t n;
+    size_t endIdx = 0;
 
     while (true) 
     {
-        n = _handler->Wrapper_Read(_fd, buffer, sizeof(buffer) - 1);
-        if (n > 0) 
+        const int32_t readSize = _handler->Wrapper_Read(_fd, buffer, sizeof(buffer) - 1);
+        if (readSize > 0) 
         {
-            buffer[n] = '\0';
-            result += buffer;
-            if (result.find('\n') != std::string::npos) { break; }
+            for (int32_t i = 0; i < readSize; ++i) 
+            {
+                char ch = buffer[i];
+                if (endIdx < end.length() && ch == end[endIdx]) 
+                {
+                    ++endIdx;
+                    line += ch;
+                    if (endIdx == end.length()) { return line; }
+                } 
+                else 
+                {
+                    if (endIdx > 0) 
+                    {
+                        for (size_t j = 0; j < endIdx; ++j) { line += end[j]; }
+                        endIdx = 0;
+
+                        if (ch == end[0]) { endIdx = 1; } 
+                        else { line += ch; }
+                    } 
+                    else { line += ch; }
+                }
+            }
         } 
         else { break; }
     }
-    return result;
 #endif
+    return line;
 }
 
-auto DetailSerial::write(const char* buffer, const size_t size) noexcept -> bool
+auto DetailSerial::write(const char* buffer, size_t size) noexcept -> bool
 {
 #if defined(WINDOWS)
     [[maybe_unused]] DWORD bytesWritten;

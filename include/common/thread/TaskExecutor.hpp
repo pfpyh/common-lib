@@ -28,7 +28,7 @@ SOFTWARE.
 
 #include "common/NonCopyable.hpp"
 #include "common/Factory.hpp"
-#include "common/misc/Utils.hpp"
+#include "common/utils/Misc.hpp"
 #include "common/thread/Thread.hpp"
 #include "common/container/WorkQueue.hpp"
 

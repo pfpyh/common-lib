@@ -37,7 +37,7 @@ using Future = std::shared_ptr<std::future<void>>;
 
 class COMMON_LIB_API Application : public NonCopyable
 {
-    SINGLE_INSTANCE_ONLY(Application);
+    SINGLE_INSTANCE_ONLY(Application)
 
 private :
     std::string _name{"Application"};

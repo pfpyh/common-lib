@@ -22,39 +22,23 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#pragma once
+#include "common/utils/String.hpp"
 
-#include <cassert>
-#include <atomic>
+#include <sstream>
+#include <iomanip>
 
-#if defined(WINDOWS)
-    #ifdef BUILDING_COMMON_LIB
-        #define COMMON_LIB_API __declspec(dllexport)
-    #else
-        #define COMMON_LIB_API __declspec(dllimport)
-    #endif
-#else
-    #ifndef COMMON_LIB_API
-        #define COMMON_LIB_API
-    #endif
-#endif
-
-#define SINGLE_INSTANCE_ONLY(ClassName) \
-private: \
-    static inline std::atomic<bool> _isSingleInstance{false}; \
-    class InstanceGuard \
-    { \
-    public: \
-        InstanceGuard() \
-        { \
-            bool expected = false; \
-            if (!ClassName::_isSingleInstance.compare_exchange_strong(expected, true)) { \
-                assert(false && #ClassName " can be created only once!"); \
-                std::terminate(); \
-            } \
-        } \
-        ~InstanceGuard() \
-        { \
-            ClassName::_isSingleInstance.store(false); \
-        } \
-    } _instanceGuard;
+namespace common::utils
+{
+auto string_to_hex(const std::string& str) -> std::string
+{
+    std::stringstream ss;
+    for (unsigned char c : str) {
+        ss << "0x" << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << static_cast<int>(c) << " ";
+    }
+    std::string result = ss.str();
+    if (!result.empty()) {
+        result.pop_back();
+    }
+    return result;
+}
+} // namespace common::utils

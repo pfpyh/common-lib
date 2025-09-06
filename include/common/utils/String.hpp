@@ -24,37 +24,20 @@ SOFTWARE.
 
 #pragma once
 
-#include <cassert>
-#include <atomic>
+#include "CommonHeader.hpp"
 
-#if defined(WINDOWS)
-    #ifdef BUILDING_COMMON_LIB
-        #define COMMON_LIB_API __declspec(dllexport)
-    #else
-        #define COMMON_LIB_API __declspec(dllimport)
-    #endif
-#else
-    #ifndef COMMON_LIB_API
-        #define COMMON_LIB_API
-    #endif
-#endif
+#include <string>
 
-#define SINGLE_INSTANCE_ONLY(ClassName) \
-private: \
-    static inline std::atomic<bool> _isSingleInstance{false}; \
-    class InstanceGuard \
-    { \
-    public: \
-        InstanceGuard() \
-        { \
-            bool expected = false; \
-            if (!ClassName::_isSingleInstance.compare_exchange_strong(expected, true)) { \
-                assert(false && #ClassName " can be created only once!"); \
-                std::terminate(); \
-            } \
-        } \
-        ~InstanceGuard() \
-        { \
-            ClassName::_isSingleInstance.store(false); \
-        } \
-    } _instanceGuard;
+namespace common::utils
+{
+/**
+ * @brief Converts a string to its hexadecimal representation.
+ *
+ * This function takes a string and converts each character to its corresponding
+ * hexadecimal value, returning the result as a string of hex digits.
+ *
+ * @param str The input string to be converted to hexadecimal format.
+ * @return std::string A string containing the hexadecimal representation of the input string.
+ */
+COMMON_LIB_API auto string_to_hex(const std::string& str) -> std::string;
+} // namespace common::utils
