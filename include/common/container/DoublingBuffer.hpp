@@ -82,7 +82,7 @@ public :
     auto push(Ty&& item) -> void
     {
         uint8_t currentIndex = _activatedIndex.load();
-        uint8_t selectedIndex = (currentIndex + 1) < Size ? (currentIndex + 1) : 0;
+        uint8_t selectedIndex = (currentIndex + 1) < static_cast<uint8_t>(Size) ? (currentIndex + 1) : 0;
         
         _buffers[selectedIndex] = std::make_shared<std::vector<Ty>>(*_buffers[currentIndex]);
         _buffers[selectedIndex]->push_back(std::forward<Ty>(item));
@@ -118,7 +118,7 @@ public :
     auto erase(size_t index) -> bool
     {
         uint8_t currentIndex = _activatedIndex.load();
-        uint8_t selectedIndex = (currentIndex + 1) < Size ? (currentIndex + 1) : 0;
+        uint8_t selectedIndex = (currentIndex + 1) < static_cast<uint8_t>(Size) ? (currentIndex + 1) : 0;
         
         if (index >= _buffers[currentIndex]->size()) { return false; }
         

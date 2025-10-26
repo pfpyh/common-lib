@@ -24,6 +24,8 @@ SOFTWARE.
 
 #include <gtest/gtest.h>
 
+#include <thread>
+
 #include "common/container/DoublingBuffer.hpp"
 #include "common/thread/Thread.hpp"
 
@@ -81,7 +83,7 @@ TEST(test_DoublingBuffer, multiReader_50threads)
             for(uint8_t itor = 0; itor < 100; ++itor)
             {
                 auto list = dBuffer.get_buffer();
-                for(uint8_t i = 0; i < list->size(); ++i)
+                for(size_t i = 0; i < list->size(); ++i)
                 {
                     if(i + 1 == list->size()) { break; }
                     ASSERT_TRUE(list->at(i) < list->at(i + 1));
@@ -131,7 +133,7 @@ TEST(test_DoublingBuffer, multiReader_255threads)
             for(uint8_t itor = 0; itor < 100; ++itor)
             {
                 auto list = dBuffer.get_buffer();
-                for(uint8_t i = 0; i < list->size(); ++i)
+                for(size_t i = 0; i < list->size(); ++i)
                 {
                     if(i + 1 == list->size()) { break; }
                     ASSERT_TRUE(list->at(i) < list->at(i + 1));

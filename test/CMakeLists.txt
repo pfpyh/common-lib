@@ -34,8 +34,12 @@ target_link_libraries(${TARGET_NAME}
                       PRIVATE 
                       ${DEPENDENCIES})
 
-include(GoogleTest)
-gtest_discover_tests(${TARGET_NAME})
+if(NOT CMAKE_CROSSCOMPILING)
+    include(GoogleTest)
+    gtest_discover_tests(${TARGET_NAME}) 
+else()
+    message(STATUS "Cross-compiling detected. Skipping CTest registration for ${TARGET_NAME}.")
+endif()
 
 add_subdirectory(application)
 

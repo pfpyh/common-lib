@@ -1,2 +1,10 @@
+if (UNIX)
+    find_program(HOST_GCC_PATH gcc)
+    find_program(HOST_GXX_PATH g++)
+    if(NOT HOST_GCC_PATH OR NOT HOST_GXX_PATH)
+        message(FATAL_ERROR "Native gcc/g++ not found. Cannot build flatc.")
+    endif()
+endif()
+
 add_subdirectory(googletest)
 add_subdirectory(flatbuffers)

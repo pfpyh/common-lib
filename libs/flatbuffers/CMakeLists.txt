@@ -447,7 +447,22 @@ if(FLATBUFFERS_BUILD_FLATLIB)
 endif()
 
 if(FLATBUFFERS_BUILD_FLATC)
+  if(CMAKE_CROSSCOMPILING)
+      set(CMAKE_C_COMPILER "gcc")
+      set(CMAKE_CXX_COMPILER "g++")
+      set(CMAKE_SYSROOT "")
+  endif()
+
   add_executable(flatc ${FlatBuffers_Compiler_SRCS})
+
+  if(CMAKE_CROSSCOMPILING)
+    set_property(TARGET flatc PROPERTY CXX_COMPILER ${HOST_GXX_PATH})
+    set_property(TARGET flatc PROPERTY C_COMPILER ${HOST_GCC_PATH})
+    set_property(TARGET flatc PROPERTY SYSROOT "")
+    
+    set(HOST_FLATC_EXECUTABLE "$<TARGET_FILE:flatc>" CACHE INTERNAL "Native flatc executable path expression")
+  endif()
+
   if(FLATBUFFERS_ENABLE_PCH)
     add_pch_to_target(flatc include/flatbuffers/pch/flatc_pch.h)
   endif()
