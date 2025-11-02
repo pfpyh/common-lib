@@ -40,7 +40,7 @@ SOFTWARE.
 #include <cstring>
 #endif
 
-namespace common
+namespace common::communication
 {
 namespace detail
 {
@@ -297,4 +297,4 @@ auto Socket::__create(SocketType::type socketType) -> std::shared_ptr<Socket>
         obj->close();
     });
 };
-} // namespace common
+} // namespace common::communication

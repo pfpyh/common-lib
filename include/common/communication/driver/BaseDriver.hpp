@@ -22,35 +22,39 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#include <gtest/gtest.h>
+#pragma once
 
-#include "common/proxy/GenericEvent.hpp"
+#include "CommonHeader.hpp"
 
-namespace common::test
+namespace common::communication
 {
-TEST(test_GenericEvent, DISABLED_publishTestMessage)
+struct DeviceInfo
 {
-    // given
-    struct DataType
+    enum DeviceType : uint8_t
     {
-        int32_t _1 = 0;
-        int32_t _2 = 0;
+        NONE = 0,
+        UART,
+        I2C,
+        SPI,
+        CH341_I2C,
+        CH341_SPI,
     };
 
-    GenericEventBus bus;
-    DataType data{100, -50};
+    explicit DeviceInfo(DeviceType type) noexcept : _type(type) {}
+    virtual ~DeviceInfo() = default;
 
-    // when
-    DataType recvData;
-    const auto subId = bus.subscribe<DataType>("Test", 
-                                               [&recvData](const DataType& data){
-        recvData = data;
-    });
-    bus.publish<DataType>("Test", data);
-    bus.unsubscribe(subId);
+    const DeviceType _type;
+};
 
-    // then
-    ASSERT_EQ(recvData._1, data._1);
-    ASSERT_EQ(recvData._2, data._2);
-}
-} // namespace common::test
+class BaseDriver
+{
+public :
+    virtual ~BaseDriver() = default;
+
+public :
+    virtual auto open() noexcept -> bool = 0;
+    virtual auto close() noexcept -> void = 0;
+    virtual auto read(unsigned char* buffer, size_t size) noexcept -> bool = 0;
+    virtual auto write(const unsigned char* buffer, size_t size) noexcept -> bool = 0;
+};
+} // namespace common::communication

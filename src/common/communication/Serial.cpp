@@ -27,14 +27,7 @@ SOFTWARE.
 
 #include <array>
 
-namespace common
-{
-auto Serial::__create() noexcept -> std::shared_ptr<Serial>
-{
-    return std::make_shared<detail::DetailSerial>();
-}
-
-namespace detail
+namespace common::communication::detail
 {
 #if defined(WINDOWS)
 auto SerialHandler::Wrapper_CreateFile(LPCSTR lpFileName,
@@ -116,17 +109,40 @@ auto SerialHandler::Wrapper_Write(int32_t fd, const char* buffer, size_t size) -
 }
 #endif
 
+DetailSerial::DetailSerial(std::unique_ptr<SerialHandler>&& handler)
+    : _handler(std::move(handler)) {}
+
+DetailSerial::~DetailSerial()
+{
+    if constexpr (STRICT_MODE_ENABLED)
+    {
+        if(_isOpen)
+        {
+            _ERROR_("Serial is not closed");
+            assert(false && "Serial is not closed");
+        }
+    }
+}
+
 auto DetailSerial::open(const std::string& port,
                         const Baudrate baudrate,
                         const uint8_t mode) noexcept -> bool
 {
-#if defined(WINDOWS)
     if(_isOpen)
     {
-        _ERROR_("Already opened : %s", port.c_str());
-        return false;
+        if constexpr (STRICT_MODE_ENABLED)
+        {
+            _ERROR_("Serial double open is not allow");
+            assert(false && "Serial double open is not allow");
+        }
+        else
+        {
+            _ERROR_("Already opened : %s", port.c_str());
+            return false;
+        }
     }
 
+#if defined(WINDOWS)
     int32_t generic = 0;
     if ((mode & SERIAL_READ) == SERIAL_READ) { generic |= GENERIC_READ; }
     if ((mode & SERIAL_WRITE) == SERIAL_WRITE) { generic |= GENERIC_WRITE;}
@@ -224,6 +240,15 @@ auto DetailSerial::close() noexcept -> void
 
 auto DetailSerial::read(char* buffer, size_t size) noexcept -> bool
 {
+    if constexpr (STRICT_MODE_ENABLED)
+    {
+        if(!_isOpen)
+        {
+            _ERROR_("Serial is not opened");
+            assert(false && "Serial is not opened");
+        }
+    }
+
 #if defined(WINDOWS)
     char ch;
     DWORD bytesRead;
@@ -252,7 +277,17 @@ auto DetailSerial::readline(EscapeSequence::type escapeSequence) noexcept -> std
         std::string("\r\n"),
     };
     static_assert(EndOfLine.size() == EscapeSequence::MAX, 
-                  "Size of EndOfLine should be fulfilled.");
+                  "Size of EndOfLine should be fulfilled");
+
+    if constexpr (STRICT_MODE_ENABLED)
+    {
+        if(!_isOpen)
+        {
+            _ERROR_("Serial is not opened");
+            assert(false && "Serial is not opened");
+        }
+    }
+
     const std::string& end = EndOfLine[static_cast<size_t>(escapeSequence)];
     std::string line;
 #if defined(WINDOWS)
@@ -325,6 +360,15 @@ auto DetailSerial::readline(EscapeSequence::type escapeSequence) noexcept -> std
 
 auto DetailSerial::write(const char* buffer, size_t size) noexcept -> bool
 {
+    if constexpr (STRICT_MODE_ENABLED)
+    {
+        if(!_isOpen)
+        {
+            _ERROR_("Serial is not opened");
+            assert(false && "Serial is not opened");
+        }
+    }
+
 #if defined(WINDOWS)
     [[maybe_unused]] DWORD bytesWritten;
     return _handler->Wrapper_WriteFile(_handle, buffer, size, &bytesWritten, NULL);
@@ -332,5 +376,16 @@ auto DetailSerial::write(const char* buffer, size_t size) noexcept -> bool
     return _handler->Wrapper_Write(_fd, buffer, size);
 #endif
 }
-} // namespace detail
-} // namespace common
+} // namespace common::communication::detail
+
+namespace common::communication
+{
+auto Serial::__create() noexcept -> std::shared_ptr<Serial>
+{
+    return std::shared_ptr<detail::DetailSerial>(new detail::DetailSerial(std::make_unique<detail::SerialHandler>()), 
+                                                 [](detail::DetailSerial* obj){
+        obj->close();
+        delete obj;
+    });
+}
+} // namespace common::communication

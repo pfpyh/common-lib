@@ -22,23 +22,25 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#if defined(LINUX)
+#pragma once
 
-#include <gtest/gtest.h>
+#include "CommonHeader.hpp"
+#include "common/communication/driver/BaseDriver.hpp"
 
-#include "common/communication/Message.hpp"
-
-namespace common::communication::test
+namespace common::communication
 {
-TEST(test_Message, create)
+struct SpiInfo : public DeviceInfo
 {
-    // given
-    auto message = Message<std::string>::create("testFile", 65);
+    enum Mode : uint8_t
+    {
+        Single  = 0,
+        Dual    = 4,
+    };
 
-    // when
-
-    // then
-}
-} // namespace common::communication::test
-
-#endif
+    SpiInfo() 
+        : DeviceInfo(DeviceInfo::SPI) {}
+    
+    Mode _mode = Single;
+    uint8_t _address = 0x00;
+};
+} // namespace common::communication

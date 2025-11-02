@@ -34,7 +34,7 @@ SOFTWARE.
 #include <sys/ipc.h>
 #include <sys/msg.h>
 
-namespace common
+namespace common::communication
 {
 template <typename DataType>
 class Message : public NonCopyable, public Factory<Message<DataType>>
@@ -108,6 +108,6 @@ private :
         return std::make_shared<Message>(key, id);
     }    
 };
-} // namespace common
+} // namespace common::communication
 
 #endif

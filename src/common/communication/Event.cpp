@@ -26,7 +26,7 @@ SOFTWARE.
 
 #include <algorithm>
 
-namespace common
+namespace common::communication
 {
 auto generate_subId() -> uint32_t
 {
@@ -135,4 +135,4 @@ auto EventBus::publish(const std::string& topic, const Payload& payload) -> void
         });
     }
 }
-} // namespace common
+} // namespace common::communication

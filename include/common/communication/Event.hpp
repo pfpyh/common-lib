@@ -36,7 +36,7 @@ SOFTWARE.
 #include <atomic>
 #include <shared_mutex>
 
-namespace common
+namespace common::communication
 {
 class COMMON_LIB_API EventBus final : public NonCopyable
 {
@@ -84,4 +84,4 @@ public :
 private :
     auto cleanup_unsubscribers() -> void;
 };
-} // namespace common
+} // namespace common::communication

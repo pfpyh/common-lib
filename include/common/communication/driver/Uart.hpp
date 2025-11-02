@@ -25,8 +25,7 @@ SOFTWARE.
 #pragma once
 
 #include "CommonHeader.hpp"
-#include "common/NonCopyable.hpp"
-#include "common/Factory.hpp"
+#include "common/communication/driver/BaseDriver.hpp"
 
 #include <stdint.h>
 #include <string>
@@ -34,38 +33,58 @@ SOFTWARE.
 
 namespace common::communication
 {
-class COMMON_LIB_API SocketType
+class SerialHandler;
+
+struct EscapeSequence
 {
-public :
     enum type : uint8_t
     {
-        SERVER,
-        CLIENT,
+        NULL_END = 0,     /*  \0  */
+        LINE_FEED,        /*  \n  */
+        CARRIAGE_RETURN,  /* \r\n */
+        MAX,
     };
+
+    type _value = NULL_END;
 };
 
-class COMMON_LIB_API Socket : public NonCopyable
-                            , public Factory<Socket>
+struct UartInfo : public DeviceInfo
 {
-    friend class Factory<Socket>;
-    
-public :
-    virtual ~Socket() = default;
+    enum Baudrate : uint8_t
+    {
+        _9600,
+        _19200,
+        _38400,
+        _57600,
+        _115200,
+    };
+
+    UartInfo() : DeviceInfo(DeviceInfo::UART) {}
+
+    std::string _port;
+    Baudrate _baudrate;
+    uint8_t _mode;
+};
+
+class COMMON_LIB_API Uart : public BaseDriver
+{
+private :
+    UartInfo _info;
+    std::unique_ptr<SerialHandler> _handler;
+    bool _isOpen = false;
 
 public :
-    static auto __create(SocketType::type socketType) -> std::shared_ptr<Socket>;
+    explicit Uart(const UartInfo* const info, 
+                  std::unique_ptr<SerialHandler> handler) noexcept
+        : _info(*info)
+        , _handler(std::move(handler)) {}
+    explicit Uart(UartInfo* info);
+    ~Uart();
 
 public :
-    virtual auto prepare(const std::string& address, const int32_t port) -> void = 0;
-    virtual auto open() -> void = 0;
-    virtual auto close() -> void = 0;
-
-    virtual auto read(void* buffer, const size_t size) -> size_t = 0;
-    virtual auto read(char* buffer, const size_t size) -> size_t = 0;
-    virtual auto read(void* buffer, const size_t size, const uint32_t millisecond) -> size_t = 0;
-    virtual auto read(char* buffer, const size_t size, const uint32_t millisecond) -> size_t = 0;
-
-    virtual auto send(void* buffer, const size_t size) -> void = 0;
-    virtual auto send(const char* buffer, const size_t size) -> void = 0;
+    auto open() noexcept -> bool override;
+    auto close() noexcept -> void override;
+    auto read(unsigned char* buffer, size_t size) noexcept -> bool override;
+    auto write(const unsigned char* buffer, size_t size) noexcept -> bool override;
 };
 } // namespace common::communication
