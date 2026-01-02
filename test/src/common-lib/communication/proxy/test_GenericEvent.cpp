@@ -22,23 +22,35 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#if defined(LINUX)
-
 #include <gtest/gtest.h>
 
-#include "common/communication/Message.hpp"
+#include "common/communication/proxy/GenericEvent.hpp"
 
 namespace common::communication::test
 {
-TEST(test_Message, create)
+TEST(test_GenericEvent, DISABLED_publishTestMessage)
 {
     // given
-    auto message = Message<std::string>::create("testFile", 65);
+    struct DataType
+    {
+        int32_t _1 = 0;
+        int32_t _2 = 0;
+    };
+
+    GenericEventBus bus;
+    DataType data{100, -50};
 
     // when
+    DataType recvData;
+    const auto subId = bus.subscribe<DataType>("Test", 
+                                               [&recvData](const DataType& data){
+        recvData = data;
+    });
+    bus.publish<DataType>("Test", data);
+    bus.unsubscribe(subId);
 
     // then
+    ASSERT_EQ(recvData._1, data._1);
+    ASSERT_EQ(recvData._2, data._2);
 }
 } // namespace common::communication::test
-
-#endif

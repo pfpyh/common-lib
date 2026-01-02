@@ -22,23 +22,28 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#if defined(LINUX)
+#pragma once
 
-#include <gtest/gtest.h>
+#include "CommonHeader.hpp"
+#include "common/communication/driver/BaseDriver.hpp"
 
-#include "common/communication/Message.hpp"
-
-namespace common::communication::test
+namespace common::communication
 {
-TEST(test_Message, create)
+struct I2CInfo : public DeviceInfo
 {
-    // given
-    auto message = Message<std::string>::create("testFile", 65);
+    enum Speed : uint32_t
+    {
+        Low         = 0x00, // 20KHz
+        Standard    = 0x01, // 100KHz (default)
+        Fast        = 0x02, // 400KHz
+        High        = 0x03, // 750KHz
+    };
 
-    // when
+    I2CInfo() 
+        : DeviceInfo(DeviceInfo::I2C) {}
 
-    // then
-}
-} // namespace common::communication::test
-
-#endif
+    Speed _speed = Standard;
+    uint8_t _devAddr = 0x00;
+    uint8_t _regAddr = 0x00;
+};
+} // namespace common::communication

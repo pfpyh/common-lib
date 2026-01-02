@@ -3,19 +3,25 @@ cmake_minimum_required(VERSION 3.16)
 set(TARGET_NAME common-lib)
 set(CMAKE_CXX_STANDARD 17)
 
-if(NOT DEFINED COMMON_LIB_BUILD_TESTING)
-    set(COMMON_LIB_BUILD_TESTING ON)
-endif()
-
 project(${TARGET_NAME})
 
 include(cmake/CommonLib.cmake)
 include(CTest)
 enable_testing()
 
-# EventBus Configuration ##################################################
+# CommonLib Configuration #################################################
+if(NOT DEFINED COMMON_LIB_BUILD_TESTING)
+    set(COMMON_LIB_BUILD_TESTING ON)
+endif()
+message(STATUS "COMMON_LIB_BUILD_TESTING = ${COMMON_LIB_BUILD_TESTING}")
+
+if(NOT DEFINED COMMON_LIB_STRICT_MODE)
+    set(COMMON_LIB_STRICT_MODE ON)
+endif()
+message(STATUS "COMMON_LIB_STRICT_MODE = ${COMMON_LIB_STRICT_MODE}")
+
 set(EVENT_THREADS 4 CACHE STRING "Number of threads used by EventBus (default: 4)")
-message(STATUS "EVENT_THREADS=${EVENT_THREADS}")
+message(STATUS "COMMON_LIB_EVENT_THREADS = ${EVENT_THREADS}")
 ###########################################################################
 
 # GoogleTest ##############################################################
@@ -24,6 +30,10 @@ set(GTEST_INCLUDES ${GTEST_ROOT}/googletest/include
                    ${GTEST_ROOT}/googlemock/include)
 set(GTEST_LINKS ${CMAKE_CURRENT_BINARY_DIR}/lib)
 ###########################################################################
+
+if (WIN32)
+
+endif()
 
 if (WIN32)
     add_definitions(-DWINDOWS)
@@ -46,6 +56,24 @@ if (WIN32)
         find_package(pybind11 REQUIRED)
         find_package(Python3 COMPONENTS Interpreter Development)
     endif()
+
+    set(CH341_BASE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/libs/CH341)
+    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+        # 64-bit build
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|aarch64")
+            set(CH341_LIB_DIR ${CH341_BASE_PATH}/arm64)
+            set(CH341_LIB_NAME CH341DLLA64.LIB)
+        else()
+            set(CH341_LIB_DIR ${CH341_BASE_PATH}/amd64)
+            set(CH341_LIB_NAME CH341DLLA64.LIB)
+        endif()
+    else()
+        # 32-bit build
+        set(CH341_LIB_DIR ${CH341_BASE_PATH}/i386)
+        set(CH341_LIB_NAME CH341DLL.LIB)
+    endif()
+
+    set(CH341_LIBRARY ${CH341_LIB_DIR}/${CH341_LIB_NAME})
 elseif (UNIX)
     add_definitions(-DLINUX)
     add_compile_options(-Wall -Wextra -Wpedantic -Werror)
@@ -56,14 +84,17 @@ elseif (UNIX)
 endif()
 
 set(INCLUDES ${CMAKE_CURRENT_LIST_DIR}/include
+             ${CMAKE_CURRENT_LIST_DIR}
              ${INCLUDES})
 
 set(LINKS ${CMAKE_CURRENT_BINARY_DIR}
           ${CMAKE_CURRENT_BINARY_DIR}/Debug
           ${CMAKE_CURRENT_BINARY_DIR}/Release
+          ${CH341_LIB_DIR}
           ${LINKS})
 
-set(DEPENDENCIES FlatBuffers)
+set(DEPENDENCIES FlatBuffers
+                 ${CH341_LIB_NAME})
 
 file(GLOB_RECURSE SOURCES ${CMAKE_CURRENT_LIST_DIR}/src/*.cpp)
 
@@ -83,6 +114,12 @@ target_compile_definitions(${TARGET_NAME}
                            BUILDING_COMMON_LIB
                            PUBLIC 
                            EVENT_THREADS=${EVENT_THREADS})
+
+if(COMMON_LIB_STRICT_MODE)
+    target_compile_definitions(${TARGET_NAME} PUBLIC STRICT_MODE_ENABLED 1)
+else()
+    target_compile_definitions(${TARGET_NAME} PUBLIC STRICT_MODE_ENABLED 0)
+endif()
 
 # pybind11 ################################################################
 if(PYTHON_BUILD)
@@ -117,6 +154,17 @@ if(PYTHON_BUILD)
                                PRIVATE EVENT_THREADS=${EVENT_THREADS})
 endif()
 ###########################################################################
+
+if(WIN32)
+    file(GLOB CH341_DLLS "${CH341_LIB_DIR}/*.dll")
+    foreach(DLL_FILE ${CH341_DLLS})
+        add_custom_command(TARGET ${TARGET_NAME} POST_BUILD
+                           COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                           ${DLL_FILE}
+                           ${CMAKE_BINARY_DIR}/bin/$<CONFIG>/
+                           COMMENT "Copying CH341 DLL to bin/$<CONFIG>/")
+    endforeach()
+endif()
 
 add_subdirectory(libs)
 if(COMMON_LIB_BUILD_TESTING)

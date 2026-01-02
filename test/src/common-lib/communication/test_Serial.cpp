@@ -26,10 +26,11 @@ SOFTWARE.
 #include <gmock/gmock.h>
 
 #include "common/communication/Serial.hpp"
+#include "common/logging/Logger.hpp"
 
 #include <array>
 
-namespace common::detail::test
+namespace common::communication::detail::test
 {
 #if defined(WINDOWS)
 class MockSerialHandler : public SerialHandler
@@ -43,7 +44,9 @@ public:
     MOCK_METHOD(bool, Wrapper_SetCommState, (HANDLE, LPDCB), (override));
     MOCK_METHOD(bool, Wrapper_SetCommTimeouts, (HANDLE, LPCOMMTIMEOUTS), (override));
 };
-#elif defined(LINUX)
+#endif
+
+#if defined(LINUX)
 class MockSerialHandler : public SerialHandler
 {
 public:
@@ -54,114 +57,114 @@ public:
 };
 #endif
 
-TEST(test_Serial, open)
+static constexpr char TEST_SERIAL_PATH[] = "TestPath";
+
+TEST(test_Serial, open_success)
 {
     using namespace ::testing;
-    {
-        // given
-        auto mockHandler = std::make_shared<MockSerialHandler>();
-    #if defined(WINDOWS)
-        EXPECT_CALL(*mockHandler, Wrapper_CreateFile(_, _, _, _, _, _, _)).WillOnce(Return(INVALID_HANDLE_VALUE));
-    #elif defined(LINUX)
-        EXPECT_CALL(*mockHandler, Wrapper_Open(_, _)).WillOnce(Return(-1));
-    #endif
 
-        DetailSerial serial(mockHandler);
+    // given
+    auto mockHandler = std::make_unique<MockSerialHandler>();
+    testing::Mock::AllowLeak(mockHandler.get());
 
-        // when
-        const auto isOpen = serial.open("COM1", Baudrate::_9600, SERIAL_READ | SERIAL_WRITE);
-        serial.close();
-
-        // then
-        ASSERT_FALSE(isOpen);
-        ASSERT_FALSE(serial.is_open());
-    }
+    // when
 #if defined(WINDOWS)
-    {
-        // given
-        auto mockHandler = std::make_shared<MockSerialHandler>();
-        EXPECT_CALL(*mockHandler, Wrapper_CreateFile(_, _, _, _, _, _, _)).WillOnce(Return(nullptr));
-        EXPECT_CALL(*mockHandler, Wrapper_GetCommState(_, _)).WillOnce(Return(false));
-
-        DetailSerial serial(mockHandler);
-
-        // when
-        const auto isOpen = serial.open("COM1", Baudrate::_9600, SERIAL_READ | SERIAL_WRITE);
-        serial.close();
-
-        // then
-        ASSERT_FALSE(isOpen);
-        ASSERT_FALSE(serial.is_open());
-    }
-    {
-        // given
-        auto mockHandler = std::make_shared<MockSerialHandler>();
-        EXPECT_CALL(*mockHandler, Wrapper_CreateFile(_, _, _, _, _, _, _)).WillOnce(Return(nullptr));
-        EXPECT_CALL(*mockHandler, Wrapper_GetCommState(_, _)).WillOnce(Return(true));
-        EXPECT_CALL(*mockHandler, Wrapper_SetCommState(_, _)).WillOnce(Return(false));
-
-        DetailSerial serial(mockHandler);
-
-        // when
-        const auto isOpen = serial.open("COM1", Baudrate::_9600, SERIAL_READ | SERIAL_WRITE);
-        serial.close();
-
-        // then
-        ASSERT_FALSE(isOpen);
-        ASSERT_FALSE(serial.is_open());
-    }
-    {
-        // given
-        auto mockHandler = std::make_shared<MockSerialHandler>();
-        EXPECT_CALL(*mockHandler, Wrapper_CreateFile(_, _, _, _, _, _, _)).WillOnce(Return(nullptr));
-        EXPECT_CALL(*mockHandler, Wrapper_GetCommState(_, _)).WillOnce(Return(true));
-        EXPECT_CALL(*mockHandler, Wrapper_SetCommState(_, _)).WillOnce(Return(true));
-        EXPECT_CALL(*mockHandler, Wrapper_SetCommTimeouts(_, _)).WillOnce(Return(false));
-
-        DetailSerial serial(mockHandler);
-
-        // when
-        const auto isOpen = serial.open("COM1", Baudrate::_9600, SERIAL_READ | SERIAL_WRITE);
-        serial.close();
-
-        // then
-        ASSERT_FALSE(isOpen);
-        ASSERT_FALSE(serial.is_open());
-    }
+    EXPECT_CALL(*mockHandler, Wrapper_CreateFile(_, _, _, _, _, _, _)).WillOnce(Return(nullptr));
+    EXPECT_CALL(*mockHandler, Wrapper_GetCommState(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mockHandler, Wrapper_SetCommState(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mockHandler, Wrapper_SetCommTimeouts(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mockHandler, Wrapper_CloseHandle(_)).Times(1);
+#elif defined(LINUX)
+    EXPECT_CALL(*mockHandler, Wrapper_Open(_, _)).WillOnce(Return(20));
 #endif
-    {
-        // given
-        auto mockHandler = std::make_shared<MockSerialHandler>();
-    #if defined(WINDOWS)
-        EXPECT_CALL(*mockHandler, Wrapper_CreateFile(_, _, _, _, _, _, _)).WillOnce(Return(nullptr));
-        EXPECT_CALL(*mockHandler, Wrapper_GetCommState(_, _)).WillOnce(Return(true));
-        EXPECT_CALL(*mockHandler, Wrapper_SetCommState(_, _)).WillOnce(Return(true));
-        EXPECT_CALL(*mockHandler, Wrapper_SetCommTimeouts(_, _)).WillOnce(Return(true));
-        EXPECT_CALL(*mockHandler, Wrapper_CloseHandle(_)).Times(1);
-    #elif defined(LINUX)
-        EXPECT_CALL(*mockHandler, Wrapper_Open(_, _)).WillOnce(Return(1));
-        EXPECT_CALL(*mockHandler, Wrapper_Close(_)).Times(1);
-    #endif
 
-        DetailSerial serial(mockHandler);
+    DetailSerial serial(std::move(mockHandler));
+    const auto isOpen = serial.open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_READ | SERIAL_WRITE);
+    serial.close();
 
-        // when
-        const auto isOpen = serial.open("COM1", Baudrate::_9600, SERIAL_READ | SERIAL_WRITE);
-        serial.close();
-
-        // then
-        ASSERT_TRUE(isOpen);
-        ASSERT_FALSE(serial.is_open());
-    }
+    // then
+    ASSERT_TRUE(isOpen);
+    ASSERT_FALSE(serial.is_open());
 }
 
-#if defined(WINDOWS)
-TEST(test_Serial, read)
+TEST(test_Serial, open_success_without_close)
 {
+    using namespace ::testing;
+
     // given
+    auto mockHandler = std::make_unique<MockSerialHandler>();
+    testing::Mock::AllowLeak(mockHandler.get());
+
+    // when
+#if defined(WINDOWS)
+    EXPECT_CALL(*mockHandler, Wrapper_CreateFile(_, _, _, _, _, _, _)).WillOnce(Return(nullptr));
+    EXPECT_CALL(*mockHandler, Wrapper_GetCommState(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mockHandler, Wrapper_SetCommState(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mockHandler, Wrapper_SetCommTimeouts(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mockHandler, Wrapper_CloseHandle(_)).Times(1);
+#elif defined(LINUX)
+    EXPECT_CALL(*mockHandler, Wrapper_Open(_, _)).WillOnce(Return(20));
+#endif
+
+    auto* serial = new DetailSerial(std::move(mockHandler));
+    const auto isOpen = serial->open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_READ | SERIAL_WRITE);
+
+    // then
+    ASSERT_TRUE(isOpen);
+    ASSERT_TRUE(serial->is_open());
+#if STRICT_MODE_ENABLED
+    ASSERT_DEATH({ delete serial; }, "Serial is not closed");
+#endif
+}
+
+TEST(test_Serial, open_double)
+{
+    using namespace ::testing;
+
+    // given
+    auto mockHandler = std::make_unique<MockSerialHandler>();
+    testing::Mock::AllowLeak(mockHandler.get());
+
+    // when & then
+#if defined(WINDOWS)
+    EXPECT_CALL(*mockHandler, Wrapper_CreateFile(_, _, _, _, _, _, _)).WillOnce(Return(nullptr));
+    EXPECT_CALL(*mockHandler, Wrapper_GetCommState(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mockHandler, Wrapper_SetCommState(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mockHandler, Wrapper_SetCommTimeouts(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mockHandler, Wrapper_CloseHandle(_)).Times(1);
+#elif defined(LINUX)
+    EXPECT_CALL(*mockHandler, Wrapper_Open(_, _)).WillOnce(Return(20));
+#endif
+
+    auto* serial = new DetailSerial(std::move(mockHandler));
+    const auto isOpen = serial->open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_READ | SERIAL_WRITE);
+    _INFO_("STRICT_MODE_ENABLED=%d", STRICT_MODE_ENABLED);
+#if STRICT_MODE_ENABLED
+    ASSERT_DEATH({
+        serial->open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_READ | SERIAL_WRITE);
+    }, "Serial double open is not allow");
+#else
+    ASSERT_FALSE(serial->open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_READ | SERIAL_WRITE));
+#endif
+}
+
+TEST(test_Serial, read_success)
+{
+    using namespace ::testing;
+
+    // given
+    auto mockHandler = std::make_unique<MockSerialHandler>();
+    testing::Mock::AllowLeak(mockHandler.get());
+
     const std::array<char, 4> input{'T', 'E', 'S', 'T'};
 
-    auto mockHandler = std::make_shared<MockSerialHandler>();
+    // when
+#if defined(WINDOWS)
+    EXPECT_CALL(*mockHandler, Wrapper_CreateFile(_, _, _, _, _, _, _)).WillOnce(Return(nullptr));
+    EXPECT_CALL(*mockHandler, Wrapper_GetCommState(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mockHandler, Wrapper_SetCommState(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mockHandler, Wrapper_SetCommTimeouts(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mockHandler, Wrapper_CloseHandle(_)).Times(1);
     EXPECT_CALL(*mockHandler, Wrapper_ReadFile(::testing::_,
                                                ::testing::_,
                                                ::testing::_,
@@ -177,11 +180,22 @@ TEST(test_Serial, read)
             *reinterpret_cast<char*>(lpBuffer) = input[index++];
             return true;
     });
+#elif defined(LINUX)
+    EXPECT_CALL(*mockHandler, Wrapper_Open(_, _)).WillOnce(Return(20));
+    EXPECT_CALL(*mockHandler, Wrapper_Read(_, _, _))
+        .WillRepeatedly([&input](int32_t fd, char* buffer, size_t size) -> ssize_t {
+            static size_t index = 0;
+            if(index >= input.size()) { return 0; }
+            buffer[0] = input[index++];
+            return 1;
+        });
+#endif
 
-    // when
-    DetailSerial serial(mockHandler);
+    DetailSerial serial(std::move(mockHandler));
     char buffer[4] = {0, };
+    serial.open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_READ);
     auto success = serial.read(buffer, 4);
+    serial.close();
 
     // then
     ASSERT_TRUE(success);
@@ -190,90 +204,145 @@ TEST(test_Serial, read)
         ASSERT_EQ(buffer[i], input.at(i));
     }
 }
-#endif
 
-TEST(test_Serial, readline)
+#if STRICT_MODE_ENABLED
+TEST(test_Serial, read_without_open)
 {
     using namespace ::testing;
 
     // given
-    auto mockHandler = std::make_shared<MockSerialHandler>();
-#if defined(WINDOWS)
-    EXPECT_CALL(*mockHandler, Wrapper_ReadFile(_, _, _, _, _))
-        .WillOnce(DoAll(
-            WithArg<1>([](void* buffer) { *static_cast<char*>(buffer) = 'H'; }),
-            SetArgPointee<3>(1),
-            Return(true)))
-        .WillOnce(DoAll(
-            WithArg<1>([](void* buffer) { *static_cast<char*>(buffer) = 'i'; }),
-            SetArgPointee<3>(1),
-            Return(true)))
-        .WillOnce(DoAll(
-            WithArg<1>([](void* buffer) { *static_cast<char*>(buffer) = '\0'; }),
-            SetArgPointee<3>(1),
-            Return(true)))
-        .WillRepeatedly(Return(false));
-#elif defined(LINUX)
-    EXPECT_CALL(*mockHandler, Wrapper_Read(_, _, _))
-        .WillOnce(DoAll(
-            WithArg<1>([](void* buffer) { *static_cast<char*>(buffer) = 'H'; }),
-            Return(1)))
-        .WillOnce(DoAll(
-            WithArg<1>([](void* buffer) { *static_cast<char*>(buffer) = 'i'; }),
-            Return(1)))
-        .WillOnce(DoAll(
-            WithArg<1>([](void* buffer) { *static_cast<char*>(buffer) = '\0'; }),
-            Return(1)))
-        .WillRepeatedly(Return(0));
-#endif
+    auto mockHandler = std::make_unique<MockSerialHandler>();
+    testing::Mock::AllowLeak(mockHandler.get());
 
-    DetailSerial serial(mockHandler);
-
-    // when
-    const std::string result(serial.readline(EscapeSequence::NULL_END));
+    // when 
+    DetailSerial serial(std::move(mockHandler));
+    char buffer[4] = {0, };
 
     // then
-    ASSERT_EQ(result, "Hi");
+    ASSERT_DEATH({ serial.read(buffer, 4); }, "Serial is not opened");
 }
+#endif
 
-TEST(test_Serial, write)
+TEST(test_Serial, readline_success)
 {
     using namespace ::testing;
-    {
-        // given
-        auto mockHandler = std::make_shared<MockSerialHandler>();
+
+    // given
+    auto mockHandler = std::make_unique<MockSerialHandler>();
+    testing::Mock::AllowLeak(mockHandler.get());
+
+    const std::array<char, 4> input{'T', 'E', 'S', 'T'};
+
+    // when
+#if defined(WINDOWS)
+    EXPECT_CALL(*mockHandler, Wrapper_CreateFile(_, _, _, _, _, _, _)).WillOnce(Return(nullptr));
+    EXPECT_CALL(*mockHandler, Wrapper_GetCommState(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mockHandler, Wrapper_SetCommState(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mockHandler, Wrapper_SetCommTimeouts(_, _)).WillOnce(Return(true));
+    EXPECT_CALL(*mockHandler, Wrapper_CloseHandle(_)).Times(1);
+    EXPECT_CALL(*mockHandler, Wrapper_ReadFile(::testing::_,
+                                               ::testing::_,
+                                               ::testing::_,
+                                               ::testing::_,
+                                               ::testing::_))
+        .WillRepeatedly([&input](HANDLE hFile,
+                                 LPVOID lpBuffer,
+                                 DWORD nNumberOfBytesToWrite,
+                                 LPDWORD lpNumberOfBytesWritten,
+                                 LPOVERLAPPED lpOverlapped) -> bool {
+            static size_t index = 0;
+            if(index == 4) { return false; }
+            *reinterpret_cast<char*>(lpBuffer) = input[index++];
+            return true;
+    });
+#elif defined(LINUX)
+    EXPECT_CALL(*mockHandler, Wrapper_Open(_, _)).WillOnce(Return(20));
+    EXPECT_CALL(*mockHandler, Wrapper_Read(_, _, _))
+        .WillRepeatedly([&input](int32_t fd, char* buffer, size_t size) -> ssize_t {
+            static size_t index = 0;
+            if(index >= input.size()) { return 0; }
+            buffer[0] = input[index++];
+            return 1;
+        });
+#endif
+
+    DetailSerial serial(std::move(mockHandler));
+    serial.open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_READ);
+    const std::string result(serial.readline(EscapeSequence::NULL_END));
+    serial.close();
+
+    // then
+    ASSERT_EQ(result, "TEST");
+}
+
+#if STRICT_MODE_ENABLED
+TEST(test_Serial, readline_without_open)
+{
+    using namespace ::testing;
+
+    // given
+    auto mockHandler = std::make_unique<MockSerialHandler>();
+    testing::Mock::AllowLeak(mockHandler.get());
+
+    const std::array<char, 4> input{'T', 'E', 'S', 'T'};
+
+    // when
+    DetailSerial serial(std::move(mockHandler));
+
+    // then
+    ASSERT_DEATH({
+        std::string result(serial.readline(EscapeSequence::NULL_END));
+    }, "Serial is not opened");
+}
+#endif
+
+TEST(test_Serial, write_success)
+{
+    using namespace ::testing;
+
+    // given
+    auto mockHandler = std::make_unique<MockSerialHandler>();
+    testing::Mock::AllowLeak(mockHandler.get());
+
+    // when
     #if defined(WINDOWS)
-        EXPECT_CALL(*mockHandler, Wrapper_WriteFile(_, _, _, _, _)).WillOnce(Return(false));
-    #elif defined(LINUX)
-        EXPECT_CALL(*mockHandler, Wrapper_Write(_, _, _)).WillOnce(Return(false));
-    #endif
-
-        DetailSerial serial(mockHandler);
-
-        // when
-        const auto buffer = "Test";
-        const bool rtn = serial.write(buffer, sizeof(buffer));
-
-        // then
-        ASSERT_FALSE(rtn);
-    }
-    {
-        // given
-        auto mockHandler = std::make_shared<MockSerialHandler>();
-    #if defined(WINDOWS)
+        EXPECT_CALL(*mockHandler, Wrapper_CreateFile(_, _, _, _, _, _, _)).WillOnce(Return(nullptr));
+        EXPECT_CALL(*mockHandler, Wrapper_GetCommState(_, _)).WillOnce(Return(true));
+        EXPECT_CALL(*mockHandler, Wrapper_SetCommState(_, _)).WillOnce(Return(true));
+        EXPECT_CALL(*mockHandler, Wrapper_SetCommTimeouts(_, _)).WillOnce(Return(true));
+        EXPECT_CALL(*mockHandler, Wrapper_CloseHandle(_)).Times(1);
         EXPECT_CALL(*mockHandler, Wrapper_WriteFile(_, _, _, _, _)).WillOnce(Return(true));
     #elif defined(LINUX)
+        EXPECT_CALL(*mockHandler, Wrapper_Open(_, _)).WillOnce(Return(20));
         EXPECT_CALL(*mockHandler, Wrapper_Write(_, _, _)).WillOnce(Return(true));
     #endif
 
-        DetailSerial serial(mockHandler);
+    DetailSerial serial(std::move(mockHandler));
 
-        // when
-        const auto buffer = "Test";
-        const bool rtn = serial.write(buffer, sizeof(buffer));
+    const auto buffer = "Test";
+    serial.open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_WRITE);
+    const bool rtn = serial.write(buffer, sizeof(buffer));
+    serial.close();
 
-        // then
-        ASSERT_TRUE(rtn);
-    }
+    // then
+    ASSERT_TRUE(rtn);
 }
-} // namespace common::test
+
+#if STRICT_MODE_ENABLED
+TEST(test_Serial, write_without_open)
+{
+    using namespace ::testing;
+
+    // given
+    auto mockHandler = std::make_unique<MockSerialHandler>();
+    testing::Mock::AllowLeak(mockHandler.get());
+
+    // when
+    DetailSerial serial(std::move(mockHandler));
+    const auto buffer = "Test";
+
+    // then
+    ASSERT_DEATH({ serial.write(buffer, sizeof(buffer)); }, "Serial is not opened");
+}
+#endif
+} // namespace common::communication::detail::test

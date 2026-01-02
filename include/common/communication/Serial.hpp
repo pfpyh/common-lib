@@ -38,7 +38,7 @@ SOFTWARE.
 #include <termios.h>
 #endif
 
-namespace common
+namespace common::communication
 {
 static constexpr uint8_t SERIAL_READ = 0x01;
 static constexpr uint8_t SERIAL_WRITE = 0x02;
@@ -309,7 +309,7 @@ public :
 class COMMON_LIB_API DetailSerial : public Serial
 {
 private :
-    std::shared_ptr<SerialHandler> _handler;
+    std::unique_ptr<SerialHandler> _handler;
     bool _isOpen = false;
 
 #if defined(WINDOWS)
@@ -319,10 +319,8 @@ private :
 #endif
 
 public :
-    DetailSerial()
-        : _handler(std::make_shared<SerialHandler>()) {}
-    DetailSerial(std::shared_ptr<SerialHandler> handler)
-        : _handler(handler) {}
+    DetailSerial(std::unique_ptr<SerialHandler>&& handler);
+    ~DetailSerial();
 
 public :
     auto open(const std::string& port,
@@ -339,4 +337,4 @@ public :
     auto write(const char* buffer, size_t size) noexcept -> bool override;
 };
 } // namespace detail
-} // namespace common
+} // namespace common::communication

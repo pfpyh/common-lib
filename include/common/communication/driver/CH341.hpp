@@ -25,47 +25,57 @@ SOFTWARE.
 #pragma once
 
 #include "CommonHeader.hpp"
-#include "common/NonCopyable.hpp"
 #include "common/Factory.hpp"
+#include "common/communication/driver/BaseDriver.hpp"
+#include "common/communication/driver/I2C.hpp"
+#include "common/communication/driver/SPI.hpp"
 
 #include <stdint.h>
-#include <string>
-#include <memory>
+#include <windows.h>
+#include <vector>
 
 namespace common::communication
 {
-class COMMON_LIB_API SocketType
+struct CH341_I2CInfo : public DeviceInfo
 {
-public :
-    enum type : uint8_t
+    enum Speed : uint32_t
     {
-        SERVER,
-        CLIENT,
+        Low         = 0x00, // 20KHz
+        Standard    = 0x01, // 100KHz (default)
+        Fast        = 0x02, // 400KHz
+        High        = 0x03, // 750KHz
     };
+
+    CH341_I2CInfo() 
+        : DeviceInfo(DeviceInfo::CH341_I2C) {}
+
+    Speed _speed = Standard;
+    uint8_t _devIndex = 0;
+    uint8_t _devAddr = 0x00;
+    uint8_t _regAddr = 0x00;
 };
 
-class COMMON_LIB_API Socket : public NonCopyable
-                            , public Factory<Socket>
+struct CH341_SpiInfo : public DeviceInfo
 {
-    friend class Factory<Socket>;
-    
-public :
-    virtual ~Socket() = default;
+    CH341_SpiInfo() 
+        : DeviceInfo(DeviceInfo::CH341_SPI) {}
+};
+
+class COMMON_LIB_API CH341 : public BaseDriver
+                           , public Factory<CH341>
+{
+    friend class Factory<CH341>;
 
 public :
-    static auto __create(SocketType::type socketType) -> std::shared_ptr<Socket>;
+    virtual ~CH341() = default;
 
 public :
-    virtual auto prepare(const std::string& address, const int32_t port) -> void = 0;
-    virtual auto open() -> void = 0;
-    virtual auto close() -> void = 0;
+    virtual auto open() noexcept -> bool = 0;
+    virtual auto close() noexcept -> void = 0;
+    virtual auto read(unsigned char* buffer, size_t size) noexcept -> bool = 0;
+    virtual auto write(const unsigned char* buffer, size_t size) noexcept -> bool = 0;
 
-    virtual auto read(void* buffer, const size_t size) -> size_t = 0;
-    virtual auto read(char* buffer, const size_t size) -> size_t = 0;
-    virtual auto read(void* buffer, const size_t size, const uint32_t millisecond) -> size_t = 0;
-    virtual auto read(char* buffer, const size_t size, const uint32_t millisecond) -> size_t = 0;
-
-    virtual auto send(void* buffer, const size_t size) -> void = 0;
-    virtual auto send(const char* buffer, const size_t size) -> void = 0;
+private :
+    static auto __create(DeviceInfo* info) noexcept -> std::shared_ptr<CH341>;
 };
 } // namespace common::communication

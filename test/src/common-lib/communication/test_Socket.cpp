@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include <thread>
 
-namespace common::test
+namespace common::communication::test
 {
 TEST(test_Socket, send_recv)
 {
@@ -77,4 +77,4 @@ TEST(test_Socket, send_recv)
     EXPECT_EQ(server_rcv_msg, client_msg);
     EXPECT_EQ(client_rcv_msg, server_msg);
 }
-} // namespace common::test
+} // namespace common::communication::test

@@ -22,23 +22,39 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#if defined(LINUX)
-
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
-#include "common/communication/Message.hpp"
+#include "common/communication/driver/CH341.hpp"
 
-namespace common::communication::test
+namespace common::communication::driver::test
 {
-TEST(test_Message, create)
-{
-    // given
-    auto message = Message<std::string>::create("testFile", 65);
+// TEST(test_CH341, read)
+// {
+//     // given
+//     CH341::I2C info;
+//     info._index = 0;
+//     info._address = 0x68;
+//     info._speed = CH341::I2C::Standard;
 
-    // when
+//     auto device = CH341::create(&info);
+//     ASSERT_TRUE(device->open());
 
-    // then
-}
-} // namespace common::communication::test
+//     // when
+//     unsigned char buffer[14] = {0, };
+//     device->read(0x3B, buffer, sizeof(buffer));
 
-#endif
+//     int16_t ax = (((int16_t)buffer[0]) << 8) | buffer[1];
+//     int16_t ay = (((int16_t)buffer[2]) << 8) | buffer[3];
+//     int16_t az = (((int16_t)buffer[4]) << 8) | buffer[5];
+//     int16_t gx = (((int16_t)buffer[8]) << 8) | buffer[9];
+//     int16_t gy = (((int16_t)buffer[10]) << 8) | buffer[11];
+//     int16_t gz = (((int16_t)buffer[12]) << 8) | buffer[13];
+
+//     std::cout << "ax=" << ax << ", ay=" << ay << ", az=" << az << std::endl;
+//     std::cout << "gx=" << gx << ", gy=" << gy << ", gz=" << gz << std::endl;
+
+//     // then
+//     device->close();
+// }
+} // namespace common::communication::driver::test

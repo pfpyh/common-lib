@@ -26,7 +26,7 @@ SOFTWARE.
 
 #include "common/communication/Event.hpp"
 
-namespace common::test
+namespace common::communication::test
 {
 TEST(test_Event, publishEventToSubscriber)
 {
@@ -146,4 +146,4 @@ TEST(test_Event, multThreading)
         ASSERT_EQ(recvSizeBuffer_4[i], sendBuffer4.size());
     }
 }
-} // common::test
+} // common::communication::test

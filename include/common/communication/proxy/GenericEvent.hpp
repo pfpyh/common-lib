@@ -30,7 +30,7 @@ SOFTWARE.
 
 #include <cstring>
 
-namespace common
+namespace common::communication
 {
 class GenericEventBus
 {
@@ -80,4 +80,4 @@ private :
         return data;
     }
 };
-} // namespace common
+} // namespace common::communication
