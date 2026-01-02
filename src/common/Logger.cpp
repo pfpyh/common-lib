@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#include "common/logging/Logger.hpp"
+#include "common/Logger.hpp"
 
 #include <iostream>
 
@@ -36,6 +36,11 @@ auto Logger::debug(const std::string& log) -> void
 auto Logger::error(const std::string& log) -> void
 {
     std::cout << "[ERROR] " << log << std::endl;
+}
+
+auto Logger::warn(const std::string& log) -> void
+{
+    std::cout << "[WARN] " << log << std::endl;
 }
 
 auto Logger::info(const std::string& log) -> void
