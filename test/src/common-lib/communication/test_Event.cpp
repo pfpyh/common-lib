@@ -107,7 +107,7 @@ TEST(test_Event, multThreading)
         });
     }
 
-    auto publisher = TaskExecutor::create(4);
+    auto publisher = threading::TaskExecutor::create(4);
     publisher->load<void>([&bus, &sendBuffer1](){
         for(uint32_t i = 0; i < 10; ++i)
         {

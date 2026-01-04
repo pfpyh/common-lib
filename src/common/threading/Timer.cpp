@@ -22,19 +22,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#include "common/thread/Timer.hpp"
-#include "common/thread/Thread.hpp"
+#include "common/threading/Timer.hpp"
+#include "common/threading/Thread.hpp"
 #include "common/Exception.hpp"
 #include "common/Singleton.hpp"
 
-#include "common/logging/Logger.hpp"
+#include "common/Logger.hpp"
 
 #include <thread>
 #include <exception>
 #include <memory>
 #include <shared_mutex>
 
-namespace common
+namespace common::threading
 {
 namespace detail
 {
@@ -60,7 +60,7 @@ public :
 public :
     auto start() -> std::future<void> override;
     auto stop() noexcept -> void override;
-    auto running() noexcept -> bool override;
+    auto status() noexcept -> bool override;
     auto wait_until_stop() -> void;
 };
 
@@ -86,7 +86,7 @@ public :
         std::lock_guard<std::shared_mutex> scopedLock(_lock, std::adopt_lock);
         _timers.erase(std::remove_if(_timers.begin(), _timers.end(),
                                      [&](const std::shared_ptr<TimerDetail>& t) {
-                                        return t == timer || !t->running();
+                                        return t == timer || !t->status();
         }), _timers.end());
     }
 
@@ -156,7 +156,7 @@ auto TimerDetail::stop() noexcept -> void
     _cv.notify_all();
 }
 
-auto TimerDetail::running() noexcept -> bool
+auto TimerDetail::status() noexcept -> bool
 { 
     return _running.load(); 
 }
@@ -185,4 +185,4 @@ auto Timer::async(Function&& func, Interval interval) noexcept -> std::future<vo
     detail::TimerManager::get_instance()->regist(sharedTimer);
     return sharedTimer->start();
 }
-} // namespace common
+} // namespace common::threading

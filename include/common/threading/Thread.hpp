@@ -36,7 +36,7 @@ SOFTWARE.
 
 #endif
 
-namespace common
+namespace common::threading
 {
 /**
  * @brief Represents a thread that can be executed independently.
@@ -99,8 +99,6 @@ private :
     /**
      * @brief Creates a new thread object.
      * 
-     * This method is used to create a new thread object, which can be used to manage a thread's lifetime.
-     * 
      * @return A shared pointer to the newly created thread object.
      */
     static auto __create() noexcept -> std::shared_ptr<Thread>;
@@ -109,15 +107,13 @@ public :
     /**
      * @brief Destructor for the Thread class.
      * 
-     * This destructor is used to release any resources held by the thread object when it is destroyed.
+     * Releases any resources held by the thread object.
      */
     virtual ~Thread() noexcept = default;
 
 public :
     /**
-     * @brief Creates a new thread and executes the given function asynchronously.
-     * 
-     * This method creates a new thread and executes the given function in a separate thread.
+     * @brief Creates a detached thread and executes the given function asynchronously.
      * 
      * @param func The function to be executed in the new thread.
      * @return A future object to synchronize the execution of the function.
@@ -128,58 +124,85 @@ public :
     /**
      * @brief Starts the thread with the given function.
      * 
-     * This method is used to start the thread with the given function. The function will be executed in a separate thread.
+     * Executes the given function in a separate thread. The thread's priority and name
+     * are applied during initialization. If the thread is already running, joins the
+     * previous thread before starting a new one.
      * 
      * @param func The function to be executed in the new thread.
-     * @return A future object to synchronize the execution of the function.
+     * @return A future object to synchronize with thread completion.
+     * 
+     * @throws AlreadyRunningException If thread is already running and cannot be restarted.
      */
-    virtual auto start(std::function<void()>&& func) noexcept -> std::future<void> = 0;
+    virtual auto start(std::function<void()>&& func) -> std::future<void> = 0;
+
+    /**
+     * @brief Checks if the thread is currently running.
+     * 
+     * @return True if the thread is running, false otherwise.
+     */
+    virtual auto status() noexcept -> bool = 0;
 
     /**
      * @brief Detaches the thread from the thread object.
      * 
-     * This method is used to detach the thread from the thread object, allowing it to run independently.
+     * Allows the thread to run independently. Once detached, the thread cannot be joined.
      * 
-     * Note that once a thread is detached, it cannot be joined or waited on using the join() function.
+     * @throws BadHandlingException If the thread is invalid or not joinable.
      */
-    virtual auto detach() noexcept -> void = 0;
+    virtual auto detach() -> void = 0;
 
     /**
      * @brief Joins the thread with the current thread.
      * 
-     * This method is used to join the thread with the current thread, blocking until the thread completes its execution.
+     * Blocks until the thread completes its execution.
      */
     virtual auto join() noexcept -> void = 0;
 
     /**
      * @brief Sets the priority of the thread.
      * 
-     * This method is used to set the priority of the thread, which can affect its scheduling behavior.
+     * Can be called before or after the thread starts. If called before start(),
+     * the priority will be applied during thread initialization.
      * 
      * @param priority The new priority of the thread.
-     * @return True if the priority was successfully set, false otherwise.
+     * @return True if priority was successfully set, false if system call failed.
+     *         Always returns true when called before thread starts.
+     * 
+     * @throws BadHandlingException If the thread is started but not joinable (invalid state).
      */
-    virtual auto set_priority(const Priority& priority) noexcept -> bool = 0;
+    virtual auto set_priority(const Priority& priority) -> bool = 0;
 
     /**
      * @brief Gets the current priority of the thread.
      * 
-     * This method is used to get the current priority of the thread.
-     * 
      * @return The current priority of the thread.
      */
     virtual auto get_priority() const noexcept -> Priority = 0;
-};
 
-namespace base
-{
-class ThreadInterface
-{
-public :
-    virtual auto start() -> std::future<void> = 0;
-    virtual auto stop() noexcept -> void = 0;
-    virtual auto set_priority(const Thread::Priority& priority) noexcept -> bool = 0;
-    virtual auto get_priority() const noexcept -> Thread::Priority = 0;
+    /**
+     * @brief Sets the name of the thread.
+     * 
+     * Can be called before or after the thread starts. If called before start(),
+     * the name will be applied during thread initialization. Useful for debugging.
+     * 
+     * @param name The name to assign to the thread.
+     * 
+     * @throws BadHandlingException If the thread is started but not joinable (invalid state).
+     */
+    virtual auto set_name(const std::string& name) -> void = 0;
+
+    /**
+     * @brief Gets the name of the thread.
+     * 
+     * @return A constant reference to the thread's name.
+     */
+    virtual auto get_name() const noexcept -> const std::string& = 0;
+
+    /**
+     * @brief Gets the thread ID.
+     * 
+     * @return The platform-specific thread ID. Returns 0 if thread hasn't started.
+     */
+    virtual auto get_tid() const noexcept -> uint64_t = 0;
 };
-} // namespace base
-} // namespace common
+} // namespace common::threading

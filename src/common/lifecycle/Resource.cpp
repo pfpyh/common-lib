@@ -1,7 +1,7 @@
 /**********************************************************************
 MIT License
 
-Copyright (c) 2025 Park Younghwan
+Copyright (c) 2026 Park Younghwan
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,40 +22,45 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#pragma once
+#include "common/lifecycle/Resource.hpp"
+#include "common/Exception.hpp"
 
-#include <cassert>
-#include <atomic>
-#include <string>
+namespace common::lifecycle
+{
+auto ResourceManager::track(base::BaseResource* resource) noexcept -> void
+{
+    std::lock_guard<std::mutex> scopedLock(_lock);
+    _resources.insert(resource);
+}
 
-#if defined(WINDOWS)
-    #ifdef BUILDING_COMMON_LIB
-        #define COMMON_LIB_API __declspec(dllexport)
-    #else
-        #define COMMON_LIB_API __declspec(dllimport)
-    #endif
-#else
-    #ifndef COMMON_LIB_API
-        #define COMMON_LIB_API
-    #endif
-#endif
+auto ResourceManager::release(base::BaseResource* resource) noexcept -> void
+{
+    std::lock_guard<std::mutex> scopedLock(_lock);
+    _resources.erase(resource);
+}
 
-#define SINGLE_INSTANCE_ONLY(ClassName) \
-private: \
-    static inline std::atomic<bool> _isSingleInstance{false}; \
-    class InstanceGuard \
-    { \
-    public: \
-        InstanceGuard() \
-        { \
-            bool expected = false; \
-            if (!ClassName::_isSingleInstance.compare_exchange_strong(expected, true)) { \
-                assert(false && #ClassName " can be created only once!"); \
-                std::terminate(); \
-            } \
-        } \
-        ~InstanceGuard() \
-        { \
-            ClassName::_isSingleInstance.store(false); \
-        } \
-    } _instanceGuard;
+auto ResourceManager::audit() -> void
+{
+    std::lock_guard<std::mutex> scopedLock(_lock);
+    if(!_resources.empty())
+    {
+        throw BadHandlingException("unreleases resource");
+    }
+}
+
+template <>
+Resource<threading::Thread>::~Resource() { release(); }
+
+template <>
+auto Resource<threading::Thread>::track(std::shared_ptr<threading::Thread> t) noexcept -> void
+{ 
+    _resource = t;
+    ResourceManager::get_instance()->track(this);
+}
+
+template <>
+auto Resource<threading::Thread>::get_ptr() noexcept -> std::shared_ptr<threading::Thread>
+{
+    return _resource.lock();
+}
+} // namespace common::lifecycle

@@ -25,8 +25,9 @@ SOFTWARE.
 #pragma once
 
 #include "CommonHeader.hpp"
-
 #include "NonCopyable.hpp"
+
+#include <memory>
 
 namespace common
 {
@@ -39,6 +40,47 @@ namespace common
  */
 template<typename Derived>
 class Singleton : public NonCopyable
+{
+    friend Derived;
+
+private :
+    inline static std::shared_ptr<Derived> _instance = std::make_shared<Derived>();
+    
+public :
+    /**
+     * @brief Gets the Singleton instance.
+     * 
+     * @return The Singleton instance.
+     */
+    static auto get_instance() -> std::shared_ptr<Derived>
+    {
+        return _instance;
+    }
+
+private :
+    /**
+     * @brief Private constructor to prevent instantiation.
+     */
+    Singleton() = default;
+
+    /**
+     * @brief Private assignment operator to prevent assignment.
+     * 
+     * @param other The other Singleton instance.
+     * @return A reference to the current Singleton instance.
+     */
+    virtual ~Singleton() = default;
+};
+
+/**
+ * @brief Template class for implementing the Singleton design pattern.
+ * 
+ * This class provides a way to implement the Singleton design pattern, which ensures that only one instance of a class is created, and provides a global point of access to that instance.
+ * 
+ * @tparam T The type of the Singleton instance.
+ */
+template<typename Derived>
+class LazySingleton : public NonCopyable
 {
     friend Derived;
     
@@ -62,7 +104,7 @@ private :
     /**
      * @brief Private constructor to prevent instantiation.
      */
-    Singleton() = default;
+    LazySingleton() = default;
 
     /**
      * @brief Private assignment operator to prevent assignment.
@@ -70,6 +112,6 @@ private :
      * @param other The other Singleton instance.
      * @return A reference to the current Singleton instance.
      */
-    virtual ~Singleton() = default;
+    virtual ~LazySingleton() = default;
 };
 } // namespace common

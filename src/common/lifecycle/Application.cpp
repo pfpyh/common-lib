@@ -23,7 +23,9 @@ SOFTWARE.
 **********************************************************************/
 
 #include "common/lifecycle/Application.h"
-#include "common/logging/Logger.hpp"
+#include "common/lifecycle/Resource.hpp"
+#include "common/Logger.hpp"
+#include "common/Exception.hpp"
 
 #include <signal.h>
 #include <string>
@@ -39,7 +41,7 @@ SOFTWARE.
     #include <limits.h>
 #endif
 
-namespace common
+namespace common::lifecycle
 {
 #if defined(WINDOWS)
 static HANDLE g_eventHandler = nullptr;
@@ -101,50 +103,59 @@ auto get_binary_name(const std::string& fullPath) -> std::string
     }
 }
 
-Application::~Application() = default;
+Application::Application() noexcept
+{
+    appName = get_binary_path();
+    if(!appPath.empty()) { appName = get_binary_name(appPath); }
+}
+
+Application::~Application() noexcept
+{
+    if constexpr (STRICT_MODE_ENABLED)
+    {
+        ResourceManager::get_instance()->audit();
+    }
+};
 
 auto Application::run() -> int32_t
 {
-    _path = get_binary_path();
-    if(!_path.empty()) { _name = get_binary_name(_path); }
-
-    _INFO_("Hello, my name is %s", _name.c_str());
+    LogInfo << "Hello, my name is " << get_app_name().c_str();
 #if defined(WINDOWS)
     g_eventHandler = CreateEvent(nullptr, TRUE, FALSE, nullptr);
 
     if(!g_eventHandler)
     {
-        _ERROR_("Failed to create ConsoleEventHandler");
+        LogError << "Failed to create ConsoleEventHandler";
         return -1;
     }
 
     if(!SetConsoleCtrlHandler(ConsoleCtrlHandler, true))
     {
-        _ERROR_("Failed to set ConsoleCtrlHandler");
+        LogError << "Failed to set ConsoleCtrlHandler";
         CloseHandle(g_eventHandler);
         return -1;
     }
 
     _t->start([this]() {
-        _INFO_("%s is initializing", _name.c_str());
+        LogInfo << get_app_name() << " is initializing";
         auto bootupFuture = bootup();
         if(bootupFuture) { bootupFuture->wait(); }
-        _INFO_("%s is running", _name.c_str());
+        LogInfo << get_app_name() << " is running";
 
         while (!_shutdown.load()) 
         {
             DWORD signal = WaitForSingleObject(g_eventHandler, 1000); // 1sec timeout
             if (signal == WAIT_OBJECT_0) // Receive terminate signal
             {
-                _INFO_("%s receiving shutdown signal(%d)", _name.c_str(), signal);
+                LogInfo << get_app_name() << " receiving shutdown signal(" << signal << ")";
                 signal_handler(SIGTERM);
             }
         }
 
-        _INFO_("%s going to shutdown", _name.c_str());
+        LogInfo << get_app_name() << " going to shutdown";
         auto shutdownFuture = shutdown();
         if(shutdownFuture) { shutdownFuture->wait(); }
-        _INFO_("%s will be closed", _name.c_str());
+        LogInfo  << get_app_name() << " will be closed";
         
     }).wait();
 
@@ -161,29 +172,29 @@ auto Application::run() -> int32_t
     pthread_sigmask(SIG_BLOCK, &set, nullptr);
 
     _t->start([this, set]() {
-        _INFO_("%s is initializing", _name.c_str());
+        LogInfo << get_app_name() << " is initializing";
         auto bootupFuture = bootup();
         if(bootupFuture) { bootupFuture->wait(); }
-        _INFO_("%s is running", _name.c_str());
+        LogInfo << get_app_name() << " is running";
 
         while (!_shutdown.load()) 
         {
             int32_t signal;
             if (sigwait(&set, &signal) == 0) 
             {
-                _INFO_("%s receiving signal(%d)", _name.c_str(), signal);
+                LogInfo << get_app_name() << " receiving signal(" << signal << ")";
                 signal_handler(signal);
             }
         }
 
-        _INFO_("%s going to shutdown", _name.c_str());
+        LogInfo << get_app_name() << " going to shutdown";
         auto shutdownFuture = shutdown();
         if(shutdownFuture) { shutdownFuture->wait(); }
-        _INFO_("%s will be closed", _name.c_str());
+        LogInfo << get_app_name() <<  " will be closed";
     }).wait();
 #endif
     
-    _INFO_("Bye, %s", _name.c_str());
+    LogInfo << "Bye, " << get_app_name();
     return 0;
 }
 
@@ -198,4 +209,4 @@ auto Application::signal_handler(int32_t signal) -> void
         default : break;
     }
 }
-} // namespace common
+} // namespace common::lifecycle

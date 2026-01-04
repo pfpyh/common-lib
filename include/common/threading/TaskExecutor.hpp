@@ -29,13 +29,13 @@ SOFTWARE.
 #include "common/NonCopyable.hpp"
 #include "common/Factory.hpp"
 #include "common/utils/Misc.hpp"
-#include "common/thread/Thread.hpp"
+#include "common/threading/Thread.hpp"
 #include "common/container/WorkQueue.hpp"
 
 #include <iostream>
 #include <vector>
 
-namespace common
+namespace common::threading
 {
 /**
  * @class TaskExecutor
@@ -165,4 +165,4 @@ public :
         _workers.clear();
     }
 };
-} // namespace common
+} // namespace common::threading

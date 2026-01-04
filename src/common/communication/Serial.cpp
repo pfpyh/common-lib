@@ -23,7 +23,7 @@ SOFTWARE.
 **********************************************************************/
 
 #include "common/communication/Serial.hpp"
-#include "common/logging/Logger.hpp"
+#include "common/Logger.hpp"
 
 #include <array>
 

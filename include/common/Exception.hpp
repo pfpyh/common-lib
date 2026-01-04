@@ -58,6 +58,22 @@ public :
     }
 };
 
+class COMMON_LIB_API BadHandlingException : public BaseException
+{
+public :
+    BadHandlingException() = default;
+    BadHandlingException(const std::string& detail)
+        : BaseException(detail) { }
+
+public :
+    const char* what() const noexcept override
+    {
+        const std::string what = _detail.empty() ? 
+            "bad handling" : "bad handling:" + _detail;
+        return what.c_str();
+    }
+};
+
 class COMMON_LIB_API OutOfRangeException : public BaseException
 {
 public :

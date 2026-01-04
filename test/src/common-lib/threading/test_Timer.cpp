@@ -24,72 +24,74 @@ SOFTWARE.
 
 #include <gtest/gtest.h>
 
-#include "common/thread/Thread.hpp"
+#include "common/threading/Timer.hpp"
+#include "common/Logger.hpp"
 
-namespace common::test
+#include <thread>
+
+namespace common::threading::test
 {
-TEST(test_Thread, create)
+TEST(test_Timer, start)
 {
     // given
-    bool value = false;
-    auto t = Thread::create();
+    uint8_t count = 0;
+    auto timer = Timer::create([&count]() -> bool{
+        ++count;
+        if (count == 10) return false;
+        return true;
+    }, std::chrono::milliseconds(10));
 
     // when
-    auto future = t->start([&value](){
-        value = true;
-    });
-    t->detach();
+    auto future = timer->start();
     future.wait();
 
     // then
-    ASSERT_TRUE(value);
+    ASSERT_EQ(count, 10);
 }
 
-TEST(test_Thread, priority)
+TEST(test_Timer, stop)
 {
     // given
-    std::promise<void> promise;
-    auto future = promise.get_future();
-    auto t = Thread::create();
-
-#if defined(WIN32)
-    const Thread::Priority origin = Thread::Policies::DEFAULT;
-    const Thread::Priority setting = Thread::Policies::TIME_CRITICAL;
-#elif defined(LINUX)
-    const Thread::Priority origin = {Thread::Policies::DEFAULT, Thread::Level::DEFAULT};
-    const Thread::Priority setting = {Thread::Policies::RR, 15};
-#endif
+    uint8_t count = 0;
+    auto timer = Timer::create([&count]() -> bool{
+        ++count;
+        if (count == 255) return false;
+        return true;
+    }, std::chrono::milliseconds(10));
 
     // when
-    auto threadFuture = t->start([&future](){
-        future.wait();
-    });
-
-    auto before = t->get_priority();
-    const bool rtn = t->set_priority(setting);
-    auto after = t->get_priority();
-
-    // then
-    ASSERT_TRUE(rtn);
-    EXPECT_EQ(before, origin);
-    EXPECT_EQ(after, setting);
-
-    promise.set_value();   
-    threadFuture.wait();
-}
-
-TEST(test_Thread, async)
-{
-    // given
-    std::atomic<bool> value{false};
-
-    // when
-    auto future = Thread::async([&value](){
-        value.store(true); 
-    });
+    auto future = timer->start();
+    timer->stop();
     future.wait();
 
     // then
-    ASSERT_TRUE(value.load());
+    ASSERT_NE(count, 255);
 }
-} // namespace common::test
+
+TEST(test_Timer, async_start)
+{
+    // given
+    std::atomic<bool> isRunning = true;
+    bool result = false;
+    std::shared_ptr<std::future<void>> future;
+    {
+        future = std::make_shared<std::future<void>>(Timer::async([&isRunning, &result]() -> bool{
+            if(!isRunning.load()) 
+            {
+                result = true;
+                return false;
+            }
+            return true;
+        }, std::chrono::milliseconds(10)));
+    }
+
+    // when
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    isRunning.store(false);
+    future->wait();
+
+    // then
+    ASSERT_TRUE(result);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+}
+} // namespace common::threading::test

@@ -26,9 +26,9 @@ SOFTWARE.
 #include <thread>
 #include <iostream>
 
-#include "common/thread/Runnable.hpp"
+#include "common/threading/Runnable.hpp"
 
-namespace common::test
+namespace common::threading::test
 {
 TEST(test_Runnable, run)
 {
@@ -46,10 +46,9 @@ TEST(test_Runnable, run)
         }
     };
 
-    auto runnable = TestRunnable();
-
     // when
-    auto future = runnable.start();
+    auto runnable = TestRunnable();
+    auto future = runnable.run();
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     const auto running = runnable.status();
     runnable.stop();
@@ -78,14 +77,14 @@ TEST(test_Runnable, already_running)
         }
     };
 
-    auto runnable = TestRunnable();
     bool exceptionRised = false;
 
     // when
-    auto future = runnable.start();
+    auto runnable = TestRunnable();
+    auto future = runnable.run();
     try 
     { 
-        runnable.start(); 
+        runnable.run(); 
     }
     catch(const AlreadyRunningException& e) 
     { 
@@ -98,28 +97,71 @@ TEST(test_Runnable, already_running)
     ASSERT_TRUE(exceptionRised);
 }
 
-TEST(test_ActiveRunnable, run)
+TEST(test_ActiveRunnable, run_with_data_type_and_return_type)
 {
     // given
-    class TestRunnable : public ActiveRunnable<int32_t>
+    class TestRunnable : public ActiveRunnable<int32_t, int32_t>
     {
     public :
         int32_t _last = -1;
 
     private :
-        auto __work(int32_t&& data) -> void override
+        auto __work(int32_t&& data) -> int32_t override
         {
             _last = data;
+            return _last;
         }
     };
 
-    auto runnable = TestRunnable();
-    std::vector<int32_t> dataList = {0, 1, 2, 3, 4, 5};
+    const std::vector<int32_t> dataList = {0, 1, 2, 3, 4, 5};
 
     // when
-    auto future = runnable.start();
-    for(auto i : dataList) { runnable.notify(i); }
+    std::vector<int32_t> recvList;
+    recvList.reserve(dataList.size());
+
+    auto runnable = TestRunnable();
+    auto future = runnable.run();
     const auto running = runnable.status();
+    for(auto i : dataList) 
+    { 
+        auto notify_future = runnable.notify(i); 
+        recvList.push_back(notify_future.get());
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    runnable.stop();
+    future.wait();
+    const auto stopped = runnable.status();
+
+    // then
+    ASSERT_EQ(runnable._last, 5);
+    ASSERT_TRUE(running);
+    ASSERT_FALSE(stopped);
+    for(size_t i = 0; i < dataList.size(); ++i) { ASSERT_EQ(dataList[i], recvList[i]); }
+}
+
+TEST(test_ActiveRunnable, run_with_data_type)
+{
+    // given
+    class TestRunnable : public ActiveRunnable<int32_t, void>
+    {
+    public :
+        uint8_t _last = 0;
+
+    private :
+        auto __work(int32_t&& data) -> void override { _last = data; }
+    };
+
+    const std::vector<int32_t> dataList = {0, 1, 2, 3, 4, 5};
+
+    // when
+    auto runnable = TestRunnable();
+    auto future = runnable.run();
+    const auto running = runnable.status();
+    for(auto i : dataList)
+    {
+        auto notify_future = runnable.notify(i);
+        notify_future.wait();
+    }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     runnable.stop();
     future.wait();
@@ -131,10 +173,82 @@ TEST(test_ActiveRunnable, run)
     ASSERT_FALSE(stopped);
 }
 
+TEST(test_ActiveRunnable, run_with_return_type)
+{
+    // given
+    class TestRunnable : public ActiveRunnable<void, int32_t>
+    {
+    public :
+        uint8_t _count = 0;
+
+    private :
+        auto __work() -> int32_t override { return _count++; }
+    };
+
+    constexpr size_t iteration = 5;
+
+    // when
+    std::vector<int32_t> recvList;
+    recvList.reserve(iteration);
+
+    auto runnable = TestRunnable();
+    auto future = runnable.run();
+    const auto running = runnable.status();
+    for(size_t i = 0; i < iteration; ++i)
+    {
+        auto notify_future = runnable.notify();
+        recvList.push_back(notify_future.get());
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    runnable.stop();
+    future.wait();
+    const auto stopped = runnable.status();
+
+    // then
+    ASSERT_EQ(runnable._count, iteration);
+    ASSERT_TRUE(running);
+    ASSERT_FALSE(stopped);
+    for(size_t i = 0; i < iteration; ++i) { ASSERT_EQ(i, recvList[i]); }
+}
+
+TEST(test_ActiveRunnable, run_with_void)
+{
+    // given
+    class TestRunnable : public ActiveRunnable<void, void>
+    {
+    public :
+        uint8_t _count = 0;
+
+    private :
+        auto __work() -> void override { ++_count; }
+    };
+
+    constexpr size_t iteration = 5;
+
+    // when
+    auto runnable = TestRunnable();
+    auto future = runnable.run();
+    const auto running = runnable.status();
+    for(size_t i = 0; i < iteration; ++i)
+    {
+        auto notify_future = runnable.notify();
+        notify_future.wait();
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    runnable.stop();
+    future.wait();
+    const auto stopped = runnable.status();
+
+    // then
+    ASSERT_EQ(runnable._count, iteration);
+    ASSERT_TRUE(running);
+    ASSERT_FALSE(stopped);
+}
+
 TEST(test_ActiveRunnable, run_dataType)
 {
     // given
-    class TestRunnable : public ActiveRunnable<std::tuple<uint8_t, int8_t>>
+    class TestRunnable : public ActiveRunnable<std::tuple<uint8_t, int8_t>, void>
     {
     public :
         std::tuple<uint8_t, int8_t> _last;
@@ -157,7 +271,7 @@ TEST(test_ActiveRunnable, run_dataType)
     };
 
     // when
-    auto future = runnable.start();
+    auto future = runnable.run();
     for(auto i : dataList) { runnable.notify(i); }
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     runnable.stop();
@@ -171,7 +285,7 @@ TEST(test_ActiveRunnable, run_dataType)
 TEST(test_ActiveRunnable, already_running)
 {
     // given
-    class TestRunnable : public ActiveRunnable<int32_t>
+    class TestRunnable : public ActiveRunnable<int32_t, void>
     {
     public :
         int32_t _last = -1;
@@ -188,10 +302,10 @@ TEST(test_ActiveRunnable, already_running)
     std::vector<int32_t> dataList = {0, 1, 2, 3, 4, 5};
 
     // when
-    auto future = runnable.start();
+    auto future = runnable.run();
     try 
     { 
-        runnable.start(); 
+        runnable.run(); 
     }
     catch(const AlreadyRunningException& e) 
     {
@@ -206,5 +320,5 @@ TEST(test_ActiveRunnable, already_running)
     ASSERT_EQ(runnable._last, 5);
     ASSERT_TRUE(exceptionRised);
 }
-} // namespace common::test
+} // namespace common::threading::test
 

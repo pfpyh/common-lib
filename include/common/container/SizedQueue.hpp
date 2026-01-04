@@ -24,38 +24,41 @@ SOFTWARE.
 
 #pragma once
 
-#include <cassert>
-#include <atomic>
-#include <string>
+#include <queue>
+#include <stdint.h>
 
-#if defined(WINDOWS)
-    #ifdef BUILDING_COMMON_LIB
-        #define COMMON_LIB_API __declspec(dllexport)
-    #else
-        #define COMMON_LIB_API __declspec(dllimport)
-    #endif
-#else
-    #ifndef COMMON_LIB_API
-        #define COMMON_LIB_API
-    #endif
-#endif
+namespace common
+{
+template <typename _tp, uint64_t _size>
+class SizedQueue
+{
+    static_assert(_size != 0, "Size of the buffer must be greater than zero.");
 
-#define SINGLE_INSTANCE_ONLY(ClassName) \
-private: \
-    static inline std::atomic<bool> _isSingleInstance{false}; \
-    class InstanceGuard \
-    { \
-    public: \
-        InstanceGuard() \
-        { \
-            bool expected = false; \
-            if (!ClassName::_isSingleInstance.compare_exchange_strong(expected, true)) { \
-                assert(false && #ClassName " can be created only once!"); \
-                std::terminate(); \
-            } \
-        } \
-        ~InstanceGuard() \
-        { \
-            ClassName::_isSingleInstance.store(false); \
-        } \
-    } _instanceGuard;
+private :
+    std::queue<_tp> _q;
+
+public :
+    auto front() -> const _tp&
+    { 
+        return _q.front(); 
+    }
+
+    auto back() -> const _tp&
+    { 
+        return _q.back(); 
+    }
+
+    auto empty() -> bool { return _q.empty(); }
+    auto size() -> size_t { return _q.size(); }
+
+    auto push_back(const _tp& x) -> void { emplace_back(x); }
+    auto push_back(_tp&& x) -> void { emplace_back(std::move(x)); }
+    template <typename ...Args> auto push_back(Args&&... args) -> void { emplace_back(args...); }
+    template <typename ...Args> auto emplace_back(Args&&... args) -> void { 
+        if(_q.size() == _size) { _q.pop(); }
+        _q.emplace(args...); 
+    }
+
+    auto pop_front() -> void { _q.pop(); }
+};
+} // namespace common

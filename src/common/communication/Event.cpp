@@ -35,7 +35,7 @@ auto generate_subId() -> uint32_t
 }
 
 EventBus::EventBus(uint32_t threadCount /* = EVENT_THREADS */)
-    : _executor(TaskExecutor::create(threadCount)) {}
+    : _executor(threading::TaskExecutor::create(threadCount)) {}
 
 EventBus::~EventBus() { finalize(); }
 
