@@ -26,7 +26,7 @@ SOFTWARE.
 #include <gmock/gmock.h>
 
 #include "common/communication/Serial.hpp"
-#include "common/logging/Logger.hpp"
+#include "common/Logger.hpp"
 
 #include <array>
 

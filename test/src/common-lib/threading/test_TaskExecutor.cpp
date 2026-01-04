@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#include "common/thread/TaskExecutor.hpp"
+#include "common/threading/TaskExecutor.hpp"
 
 #include <gtest/gtest.h>
 
@@ -32,7 +32,7 @@ SOFTWARE.
 #include <climits>
 #include <thread>
 
-namespace common::test
+namespace common::threading::test
 {
 TEST(test_TaskExecutor, LoadSimpleFunction)
 {
@@ -214,4 +214,4 @@ TEST(test_TaskExecutor, WorkStealing)
     
     executor->stop();
 }
-} // namespace common::test
+} // namespace common::threading::test

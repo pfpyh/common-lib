@@ -27,7 +27,7 @@ SOFTWARE.
 #include <thread>
 
 #include "common/container/DoublingBuffer.hpp"
-#include "common/thread/Thread.hpp"
+#include "common/threading/Thread.hpp"
 
 namespace common::test
 {
@@ -55,7 +55,7 @@ TEST(test_DoublingBuffer, multiReader_50threads)
 
     // when
     std::atomic<bool> running{true};
-    auto writer = Thread::create();
+    auto writer = threading::Thread::create();
     auto writerFuture = writer->start([&dBuffer, &running](){
         bool positive = true;
         uint8_t count = 0;
@@ -78,7 +78,7 @@ TEST(test_DoublingBuffer, multiReader_50threads)
     std::vector<std::future<void>> futures;
     for(uint8_t threadCnt = 0; threadCnt < 50; ++threadCnt)
     {
-        auto reader = Thread::create();
+        auto reader = threading::Thread::create();
         futures.push_back(std::move(reader->start([&dBuffer](){
             for(uint8_t itor = 0; itor < 100; ++itor)
             {
@@ -105,7 +105,7 @@ TEST(test_DoublingBuffer, multiReader_255threads)
 
     // when
     std::atomic<bool> running{true};
-    auto writer = Thread::create();
+    auto writer = threading::Thread::create();
     auto writerFuture = writer->start([&dBuffer, &running](){
         bool positive = true;
         uint8_t count = 0;
@@ -128,7 +128,7 @@ TEST(test_DoublingBuffer, multiReader_255threads)
     std::vector<std::future<void>> futures;
     for(uint8_t threadCnt = 0; threadCnt < 50; ++threadCnt)
     {
-        auto reader = Thread::create();
+        auto reader = threading::Thread::create();
         futures.push_back(std::move(reader->start([&dBuffer](){
             for(uint8_t itor = 0; itor < 100; ++itor)
             {

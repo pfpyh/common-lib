@@ -33,7 +33,7 @@ SOFTWARE.
 #include <chrono>
 #include <future>
 
-namespace common
+namespace common::threading
 {
 /**
  * @brief Represents a timer that can execute a given function at a specified interval.
@@ -98,11 +98,11 @@ public :
      *
      * @return true if the timer is running, false otherwise.
      */
-    virtual auto running() noexcept -> bool = 0;
+    virtual auto status() noexcept -> bool = 0;
 };
 
 namespace detail
 {
     class TimerDetail;
 } // namespace detail
-} // namespace common
+} // namespace common::threading

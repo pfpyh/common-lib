@@ -27,7 +27,7 @@ SOFTWARE.
 #include "CommonHeader.hpp"
 
 #include "common/NonCopyable.hpp"
-#include "common/thread/TaskExecutor.hpp"
+#include "common/threading/TaskExecutor.hpp"
 
 #include <string>
 #include <vector>
@@ -59,7 +59,7 @@ public :
     using TopicData = std::vector<std::shared_ptr<HandlerInfo>>;
 
 private :
-    std::shared_ptr<common::TaskExecutor> _executor;
+    std::shared_ptr<threading::TaskExecutor> _executor;
     std::vector<std::shared_ptr<HandlerInfo>> _handlers;
 
     std::shared_mutex _topicLock;

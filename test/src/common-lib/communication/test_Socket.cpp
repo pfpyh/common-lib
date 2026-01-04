@@ -25,8 +25,8 @@ SOFTWARE.
 #include <gtest/gtest.h>
 
 #include "common/communication/Socket.hpp"
-#include "common/thread/Thread.hpp"
-#include "common/logging/Logger.hpp"
+#include "common/threading/Thread.hpp"
+#include "common/Logger.hpp"
 
 #include <thread>
 
@@ -41,7 +41,7 @@ TEST(test_Socket, send_recv)
     const std::string client_msg("CLIENT MSG");
     std::string client_rcv_msg;
 
-    auto server_future = Thread::async([&server_msg, &server_rcv_msg](){ 
+    auto server_future = threading::Thread::async([&server_msg, &server_rcv_msg](){ 
         auto server = Socket::create(SocketType::SERVER);
         server->prepare("127.0.0.1", 8080);
         server->open();        
@@ -56,7 +56,7 @@ TEST(test_Socket, send_recv)
 
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    auto client_future = Thread::async([&client_msg, &client_rcv_msg](){ 
+    auto client_future = threading::Thread::async([&client_msg, &client_rcv_msg](){ 
         auto client = Socket::create(SocketType::CLIENT);
         client->prepare("127.0.0.1", 8080);
         client->open();

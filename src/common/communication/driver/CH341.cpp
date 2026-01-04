@@ -23,7 +23,7 @@ SOFTWARE.
 **********************************************************************/
 
 #include "common/communication/driver/CH341.hpp"
-#include "common/logging/Logger.hpp"
+#include "common/Logger.hpp"
 
 #include "libs/CH341/CH341DLL.H"
 

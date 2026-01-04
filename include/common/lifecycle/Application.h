@@ -26,27 +26,32 @@ SOFTWARE.
 
 #include "CommonHeader.hpp"
 #include "common/NonCopyable.hpp"
-#include "common/thread/Thread.hpp"
+#include "common/threading/Thread.hpp"
 
 #include <future>
 #include <string>
 
-namespace common
+namespace common::lifecycle
 {
 using Future = std::shared_ptr<std::future<void>>;
+
+inline std::string appPath;
+inline std::string appName{"application"};
+
+static auto get_app_path() -> const std::string& { return appPath; }
+static auto get_app_name() -> const std::string& { return appName; }
 
 class COMMON_LIB_API Application : public NonCopyable
 {
     SINGLE_INSTANCE_ONLY(Application)
 
 private :
-    std::string _name{"Application"};
-    std::string _path;
-    std::shared_ptr<Thread> _t = Thread::create();
+    std::shared_ptr<threading::Thread> _t = threading::Thread::create();
     std::atomic<bool> _shutdown{false};
 
 public :
-    virtual ~Application();
+    Application() noexcept;
+    virtual ~Application() noexcept;
 
 public :
     auto run() -> int32_t;
@@ -58,4 +63,4 @@ public :
     virtual auto bootup() -> Future = 0;
     virtual auto shutdown() -> Future = 0;
 };
-} // namespace common
+} // namespace common::lifecycle
