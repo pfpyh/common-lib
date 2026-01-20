@@ -38,7 +38,7 @@ using Future = std::shared_ptr<std::future<void>>;
 inline std::string appPath;
 inline std::string appName{"application"};
 
-static auto get_app_path() -> const std::string& { return appPath; }
+[[maybe_unused]] static auto get_app_path() -> const std::string& { return appPath; }
 static auto get_app_name() -> const std::string& { return appName; }
 
 class COMMON_LIB_API Application : public NonCopyable

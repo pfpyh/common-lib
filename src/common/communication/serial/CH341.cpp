@@ -22,6 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
+#if defined(WINDOWS)
+
 #include "common/communication/driver/CH341.hpp"
 #include "common/Logger.hpp"
 
@@ -199,3 +201,5 @@ auto CH341::__create(DeviceInfo* info) noexcept -> std::shared_ptr<CH341>
     }
 }
 } // namespace common::communication
+
+#endif

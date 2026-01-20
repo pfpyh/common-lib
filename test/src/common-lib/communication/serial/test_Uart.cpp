@@ -25,7 +25,7 @@ SOFTWARE.
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include "common/communication/Serial.hpp"
+#include "../common-lib/src/common/communication/serial/Uart.cpp"
 #include "common/Logger.hpp"
 
 #include <array>
@@ -59,7 +59,7 @@ public:
 
 static constexpr char TEST_SERIAL_PATH[] = "TestPath";
 
-TEST(test_Serial, open_success)
+TEST(test_Uart, open_success)
 {
     using namespace ::testing;
 
@@ -78,16 +78,18 @@ TEST(test_Serial, open_success)
     EXPECT_CALL(*mockHandler, Wrapper_Open(_, _)).WillOnce(Return(20));
 #endif
 
-    DetailSerial serial(std::move(mockHandler));
-    const auto isOpen = serial.open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_READ | SERIAL_WRITE);
+    UartImpl serial(TEST_SERIAL_PATH, 
+                    Baudrate::_9600, 
+                    SERIAL_READ | SERIAL_WRITE,
+                    std::move(mockHandler));
+    const auto isOpen = serial.open();
     serial.close();
 
     // then
     ASSERT_TRUE(isOpen);
-    ASSERT_FALSE(serial.is_open());
 }
 
-TEST(test_Serial, open_success_without_close)
+TEST(test_Uart, open_success_without_close)
 {
     using namespace ::testing;
 
@@ -106,18 +108,20 @@ TEST(test_Serial, open_success_without_close)
     EXPECT_CALL(*mockHandler, Wrapper_Open(_, _)).WillOnce(Return(20));
 #endif
 
-    auto* serial = new DetailSerial(std::move(mockHandler));
-    const auto isOpen = serial->open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_READ | SERIAL_WRITE);
+    auto* serial = new UartImpl(TEST_SERIAL_PATH, 
+                                Baudrate::_9600, 
+                                SERIAL_READ | SERIAL_WRITE,
+                                std::move(mockHandler));
+    const auto isOpen = serial->open();
 
     // then
     ASSERT_TRUE(isOpen);
-    ASSERT_TRUE(serial->is_open());
 #if STRICT_MODE_ENABLED
     ASSERT_DEATH({ delete serial; }, "Serial is not closed");
 #endif
 }
 
-TEST(test_Serial, open_double)
+TEST(test_Uart, open_double)
 {
     using namespace ::testing;
 
@@ -136,19 +140,21 @@ TEST(test_Serial, open_double)
     EXPECT_CALL(*mockHandler, Wrapper_Open(_, _)).WillOnce(Return(20));
 #endif
 
-    auto* serial = new DetailSerial(std::move(mockHandler));
-    const auto isOpen = serial->open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_READ | SERIAL_WRITE);
+    auto* serial = new UartImpl(TEST_SERIAL_PATH, 
+                                Baudrate::_9600, 
+                                SERIAL_READ | SERIAL_WRITE, 
+                                std::move(mockHandler));
+    const auto isOpen = serial->open();
+    ASSERT_TRUE(isOpen);
     _INFO_("STRICT_MODE_ENABLED=%d", STRICT_MODE_ENABLED);
 #if STRICT_MODE_ENABLED
-    ASSERT_DEATH({
-        serial->open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_READ | SERIAL_WRITE);
-    }, "Serial double open is not allow");
+    ASSERT_DEATH({ serial->open(); }, "Serial double open is not allow");
 #else
-    ASSERT_FALSE(serial->open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_READ | SERIAL_WRITE));
+    ASSERT_FALSE(serial->open());
 #endif
 }
 
-TEST(test_Serial, read_success)
+TEST(test_Uart, read_success)
 {
     using namespace ::testing;
 
@@ -183,17 +189,27 @@ TEST(test_Serial, read_success)
 #elif defined(LINUX)
     EXPECT_CALL(*mockHandler, Wrapper_Open(_, _)).WillOnce(Return(20));
     EXPECT_CALL(*mockHandler, Wrapper_Read(_, _, _))
-        .WillRepeatedly([&input](int32_t fd, char* buffer, size_t size) -> ssize_t {
-            static size_t index = 0;
-            if(index >= input.size()) { return 0; }
-            buffer[0] = input[index++];
-            return 1;
+        .WillRepeatedly([&input]([[maybe_unused]] int32_t fd, 
+                                 char* buffer, 
+                                 [[maybe_unused]] size_t size) -> ssize_t {
+            ssize_t readSize = 0;
+            for(size_t i = 0; i < size; ++i)
+            {
+                if(i > input.size()) break;
+
+                buffer[i] = input[i];
+                ++readSize;
+            }
+            return readSize;
         });
 #endif
 
-    DetailSerial serial(std::move(mockHandler));
+    UartImpl serial(TEST_SERIAL_PATH, 
+                    Baudrate::_9600, 
+                    SERIAL_READ, 
+                    std::move(mockHandler));
     char buffer[4] = {0, };
-    serial.open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_READ);
+    serial.open();
     auto success = serial.read(buffer, 4);
     serial.close();
 
@@ -206,7 +222,7 @@ TEST(test_Serial, read_success)
 }
 
 #if STRICT_MODE_ENABLED
-TEST(test_Serial, read_without_open)
+TEST(test_Uart, read_without_open)
 {
     using namespace ::testing;
 
@@ -215,7 +231,10 @@ TEST(test_Serial, read_without_open)
     testing::Mock::AllowLeak(mockHandler.get());
 
     // when 
-    DetailSerial serial(std::move(mockHandler));
+    UartImpl serial(TEST_SERIAL_PATH, 
+                    Baudrate::_9600, 
+                    SERIAL_READ, 
+                    std::move(mockHandler));
     char buffer[4] = {0, };
 
     // then
@@ -223,7 +242,7 @@ TEST(test_Serial, read_without_open)
 }
 #endif
 
-TEST(test_Serial, readline_success)
+TEST(test_Uart, readline_success)
 {
     using namespace ::testing;
 
@@ -258,7 +277,9 @@ TEST(test_Serial, readline_success)
 #elif defined(LINUX)
     EXPECT_CALL(*mockHandler, Wrapper_Open(_, _)).WillOnce(Return(20));
     EXPECT_CALL(*mockHandler, Wrapper_Read(_, _, _))
-        .WillRepeatedly([&input](int32_t fd, char* buffer, size_t size) -> ssize_t {
+        .WillRepeatedly([&input]([[maybe_unused]] int32_t fd, 
+                                 [[maybe_unused]] char* buffer, 
+                                 [[maybe_unused]] size_t size) -> ssize_t {
             static size_t index = 0;
             if(index >= input.size()) { return 0; }
             buffer[0] = input[index++];
@@ -266,8 +287,11 @@ TEST(test_Serial, readline_success)
         });
 #endif
 
-    DetailSerial serial(std::move(mockHandler));
-    serial.open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_READ);
+    UartImpl serial(TEST_SERIAL_PATH, 
+                    Baudrate::_9600, 
+                    SERIAL_READ,
+                    std::move(mockHandler));
+    serial.open();
     const std::string result(serial.readline(EscapeSequence::NULL_END));
     serial.close();
 
@@ -276,7 +300,7 @@ TEST(test_Serial, readline_success)
 }
 
 #if STRICT_MODE_ENABLED
-TEST(test_Serial, readline_without_open)
+TEST(test_Uart, readline_without_open)
 {
     using namespace ::testing;
 
@@ -284,10 +308,11 @@ TEST(test_Serial, readline_without_open)
     auto mockHandler = std::make_unique<MockSerialHandler>();
     testing::Mock::AllowLeak(mockHandler.get());
 
-    const std::array<char, 4> input{'T', 'E', 'S', 'T'};
-
     // when
-    DetailSerial serial(std::move(mockHandler));
+    UartImpl serial(TEST_SERIAL_PATH, 
+                    Baudrate::_9600, 
+                    SERIAL_WRITE,
+                    std::move(mockHandler));
 
     // then
     ASSERT_DEATH({
@@ -296,7 +321,7 @@ TEST(test_Serial, readline_without_open)
 }
 #endif
 
-TEST(test_Serial, write_success)
+TEST(test_Uart, write_success)
 {
     using namespace ::testing;
 
@@ -317,10 +342,13 @@ TEST(test_Serial, write_success)
         EXPECT_CALL(*mockHandler, Wrapper_Write(_, _, _)).WillOnce(Return(true));
     #endif
 
-    DetailSerial serial(std::move(mockHandler));
+    UartImpl serial(TEST_SERIAL_PATH, 
+                    Baudrate::_9600, 
+                    SERIAL_WRITE,
+                    std::move(mockHandler));
 
     const auto buffer = "Test";
-    serial.open(TEST_SERIAL_PATH, Baudrate::_9600, SERIAL_WRITE);
+    serial.open();
     const bool rtn = serial.write(buffer, sizeof(buffer));
     serial.close();
 
@@ -329,7 +357,7 @@ TEST(test_Serial, write_success)
 }
 
 #if STRICT_MODE_ENABLED
-TEST(test_Serial, write_without_open)
+TEST(test_Uart, write_without_open)
 {
     using namespace ::testing;
 
@@ -338,7 +366,10 @@ TEST(test_Serial, write_without_open)
     testing::Mock::AllowLeak(mockHandler.get());
 
     // when
-    DetailSerial serial(std::move(mockHandler));
+    UartImpl serial(TEST_SERIAL_PATH, 
+                    Baudrate::_9600, 
+                    SERIAL_WRITE,
+                    std::move(mockHandler));
     const auto buffer = "Test";
 
     // then

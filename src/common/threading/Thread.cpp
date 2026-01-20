@@ -32,6 +32,11 @@ SOFTWARE.
 #include <functional>
 #include <memory>
 
+#if defined(LINUX)
+#include <unistd.h>
+#include <sys/syscall.h>
+#endif
+
 namespace common::threading
 {
 namespace detail

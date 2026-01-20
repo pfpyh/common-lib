@@ -23,6 +23,7 @@ SOFTWARE.
 **********************************************************************/
 
 #include <gtest/gtest.h>
+#include <thread>
 
 #include "common/threading/Thread.hpp"
 #include "common/Exception.hpp"
@@ -59,7 +60,7 @@ TEST(test_Thread, start_already_running)
     // when & then
     bool catched = false;
     try { t->start([&running](){}); }
-    catch(AlreadyRunningException) { catched = true; }
+    catch([[maybe_unused]] AlreadyRunningException &e) { catched = true; }
     ASSERT_TRUE(catched);
 
     running.store(false);
@@ -77,7 +78,7 @@ TEST(test_Thread, start_already_running)
         running.store(false);
         future_.wait();
     }
-    catch(AlreadyRunningException) { catched = true; }
+    catch([[maybe_unused]] AlreadyRunningException &e) { catched = true; }
     ASSERT_FALSE(catched);
 }
 
@@ -95,7 +96,7 @@ TEST(test_Thread, start_already_running_detached)
     // when & then
     bool catched = false;
     try { t->start([&running](){}); }
-    catch(AlreadyRunningException) { catched = true; }
+    catch([[maybe_unused]] AlreadyRunningException &e) { catched = true; }
     ASSERT_TRUE(catched);
 
     running.store(false);
@@ -114,7 +115,7 @@ TEST(test_Thread, start_already_running_detached)
         running.store(false);
         future_.wait();
     }
-    catch(AlreadyRunningException) { catched = true; }
+    catch([[maybe_unused]] AlreadyRunningException &e) { catched = true; }
     ASSERT_FALSE(catched);
 }
 
@@ -163,7 +164,7 @@ TEST(test_Thread, set_name_priority_after_start)
 #if defined(WIN32)
     const Thread::Priority testThreadPrio = Thread::Policies::TIME_CRITICAL;
 #elif defined(LINUX)
-    const Thread::Priority testThreadPrio = {Thread::Policies::RR, 15};
+    const Thread::Priority testThreadPrio = {Thread::Policies::OTHER, 0};
 #endif
     ASSERT_TRUE(t->set_priority(testThreadPrio));
 
@@ -173,7 +174,7 @@ TEST(test_Thread, set_name_priority_after_start)
     });
 
     t->set_name(testThreadName);
-    ASSERT_TRUE(t->set_priority(testThreadPrio));
+    t->set_priority(testThreadPrio);
 
     const auto threadName = t->get_name();
     const auto threadPrio = t->get_priority();

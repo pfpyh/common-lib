@@ -21,40 +21,64 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
+#if defined(WINDOWS)
 
 #pragma once
 
 #include "CommonHeader.hpp"
+#include "common/Factory.hpp"
+#include "common/communication/driver/BaseDriver.hpp"
+#include "common/communication/driver/I2C.hpp"
+#include "common/communication/driver/SPI.hpp"
+
+#include <stdint.h>
+#include <windows.h>
+#include <vector>
 
 namespace common::communication
 {
-struct DeviceInfo
+struct CH341_I2CInfo : public DeviceInfo
 {
-    enum DeviceType : uint8_t
+    enum Speed : uint32_t
     {
-        NONE = 0,
-        UART,
-        I2C,
-        SPI,
-        CH341_I2C,
-        CH341_SPI,
+        Low         = 0x00, // 20KHz
+        Standard    = 0x01, // 100KHz (default)
+        Fast        = 0x02, // 400KHz
+        High        = 0x03, // 750KHz
     };
 
-    explicit DeviceInfo(DeviceType type) noexcept : _type(type) {}
-    virtual ~DeviceInfo() = default;
+    CH341_I2CInfo() 
+        : DeviceInfo(DeviceInfo::CH341_I2C) {}
 
-    const DeviceType _type;
+    Speed _speed = Standard;
+    uint8_t _devIndex = 0;
+    uint8_t _devAddr = 0x00;
+    uint8_t _regAddr = 0x00;
 };
 
-class BaseDriver
+struct CH341_SpiInfo : public DeviceInfo
 {
+    CH341_SpiInfo() 
+        : DeviceInfo(DeviceInfo::CH341_SPI) {}
+};
+
+class COMMON_LIB_API CH341 : public BaseDriver
+                           , public Factory<CH341>
+{
+    friend class Factory<CH341>;
+
 public :
-    virtual ~BaseDriver() = default;
+    virtual ~CH341() = default;
 
 public :
     virtual auto open() noexcept -> bool = 0;
     virtual auto close() noexcept -> void = 0;
     virtual auto read(unsigned char* buffer, size_t size) noexcept -> bool = 0;
     virtual auto write(const unsigned char* buffer, size_t size) noexcept -> bool = 0;
+
+private :
+    static auto __create(DeviceInfo* info) noexcept -> std::shared_ptr<CH341>;
 };
 } // namespace common::communication
+
+#endif

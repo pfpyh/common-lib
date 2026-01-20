@@ -104,7 +104,6 @@ private :
     std::weak_ptr<ResourceType> _resource;
 
 public :
-    Resource() noexcept = default;
     ~Resource() noexcept { release(); }
 
 public :
@@ -141,5 +140,5 @@ public :
     }
 };
 
-extern template Resource<threading::Thread>::Resource() noexcept;
+// extern template Resource<threading::Thread>::Resource() noexcept;
 } // namespace common::lifecycle
