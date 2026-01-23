@@ -116,9 +116,9 @@ target_compile_definitions(${TARGET_NAME}
                            EVENT_THREADS=${EVENT_THREADS})
 
 if(COMMON_LIB_STRICT_MODE)
-    target_compile_definitions(${TARGET_NAME} PUBLIC STRICT_MODE_ENABLED 1)
+    target_compile_definitions(${TARGET_NAME} PUBLIC STRICT_MODE_ENABLED=1)
 else()
-    target_compile_definitions(${TARGET_NAME} PUBLIC STRICT_MODE_ENABLED 0)
+    target_compile_definitions(${TARGET_NAME} PUBLIC STRICT_MODE_ENABLED=0)
 endif()
 
 # pybind11 ################################################################

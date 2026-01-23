@@ -1,7 +1,7 @@
 /**********************************************************************
 MIT License
 
-Copyright (c) 2025 Park Younghwan
+Copyright (c) 2026 Park Younghwan
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,39 +22,45 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#pragma once
+#include "common/lifecycle/Resource.hpp"
+#include "common/Exception.hpp"
 
-#include "CommonHeader.hpp"
+namespace common::lifecycle
+{
+auto ResourceManager::track(base::BaseResource* resource) noexcept -> void
+{
+    std::lock_guard<std::mutex> scopedLock(_lock);
+    _resources.insert(resource);
+}
 
-namespace common::communication
+auto ResourceManager::release(base::BaseResource* resource) noexcept -> void
 {
-struct DeviceInfo
+    std::lock_guard<std::mutex> scopedLock(_lock);
+    _resources.erase(resource);
+}
+
+auto ResourceManager::audit() -> void
 {
-    enum DeviceType : uint8_t
+    std::lock_guard<std::mutex> scopedLock(_lock);
+    if(!_resources.empty())
     {
-        NONE = 0,
-        UART,
-        I2C,
-        SPI,
-        CH341_I2C,
-        CH341_SPI,
-    };
+        throw BadHandlingException("unreleases resource");
+    }
+}
 
-    explicit DeviceInfo(DeviceType type) noexcept : _type(type) {}
-    virtual ~DeviceInfo() = default;
+template <>
+Resource<threading::Thread>::~Resource() { release(); }
 
-    const DeviceType _type;
-};
+template <>
+auto Resource<threading::Thread>::track(std::shared_ptr<threading::Thread> t) noexcept -> void
+{ 
+    _resource = t;
+    ResourceManager::get_instance()->track(this);
+}
 
-class BaseDriver
+template <>
+auto Resource<threading::Thread>::get_ptr() noexcept -> std::shared_ptr<threading::Thread>
 {
-public :
-    virtual ~BaseDriver() = default;
-
-public :
-    virtual auto open() noexcept -> bool = 0;
-    virtual auto close() noexcept -> void = 0;
-    virtual auto read(unsigned char* buffer, size_t size) noexcept -> bool = 0;
-    virtual auto write(const unsigned char* buffer, size_t size) noexcept -> bool = 0;
-};
-} // namespace common::communication
+    return _resource.lock();
+}
+} // namespace common::lifecycle

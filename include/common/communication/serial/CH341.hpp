@@ -21,70 +21,64 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
+#if defined(WINDOWS)
 
 #pragma once
 
 #include "CommonHeader.hpp"
+#include "common/Factory.hpp"
 #include "common/communication/driver/BaseDriver.hpp"
+#include "common/communication/driver/I2C.hpp"
+#include "common/communication/driver/SPI.hpp"
 
 #include <stdint.h>
-#include <string>
-#include <memory>
+#include <windows.h>
+#include <vector>
 
 namespace common::communication
 {
-class SerialHandler;
-
-struct EscapeSequence
+struct CH341_I2CInfo : public DeviceInfo
 {
-    enum type : uint8_t
+    enum Speed : uint32_t
     {
-        NULL_END = 0,     /*  \0  */
-        LINE_FEED,        /*  \n  */
-        CARRIAGE_RETURN,  /* \r\n */
-        MAX,
+        Low         = 0x00, // 20KHz
+        Standard    = 0x01, // 100KHz (default)
+        Fast        = 0x02, // 400KHz
+        High        = 0x03, // 750KHz
     };
 
-    type _value = NULL_END;
+    CH341_I2CInfo() 
+        : DeviceInfo(DeviceInfo::CH341_I2C) {}
+
+    Speed _speed = Standard;
+    uint8_t _devIndex = 0;
+    uint8_t _devAddr = 0x00;
+    uint8_t _regAddr = 0x00;
 };
 
-struct UartInfo : public DeviceInfo
+struct CH341_SpiInfo : public DeviceInfo
 {
-    enum Baudrate : uint8_t
-    {
-        _9600,
-        _19200,
-        _38400,
-        _57600,
-        _115200,
-    };
-
-    UartInfo() : DeviceInfo(DeviceInfo::UART) {}
-
-    std::string _port;
-    Baudrate _baudrate;
-    uint8_t _mode;
+    CH341_SpiInfo() 
+        : DeviceInfo(DeviceInfo::CH341_SPI) {}
 };
 
-class COMMON_LIB_API Uart : public BaseDriver
+class COMMON_LIB_API CH341 : public BaseDriver
+                           , public Factory<CH341>
 {
+    friend class Factory<CH341>;
+
+public :
+    virtual ~CH341() = default;
+
+public :
+    virtual auto open() noexcept -> bool = 0;
+    virtual auto close() noexcept -> void = 0;
+    virtual auto read(unsigned char* buffer, size_t size) noexcept -> bool = 0;
+    virtual auto write(const unsigned char* buffer, size_t size) noexcept -> bool = 0;
+
 private :
-    UartInfo _info;
-    std::unique_ptr<SerialHandler> _handler;
-    bool _isOpen = false;
-
-public :
-    explicit Uart(const UartInfo* const info, 
-                  std::unique_ptr<SerialHandler> handler) noexcept
-        : _info(*info)
-        , _handler(std::move(handler)) {}
-    explicit Uart(UartInfo* info);
-    ~Uart();
-
-public :
-    auto open() noexcept -> bool override;
-    auto close() noexcept -> void override;
-    auto read(unsigned char* buffer, size_t size) noexcept -> bool override;
-    auto write(const unsigned char* buffer, size_t size) noexcept -> bool override;
+    static auto __create(DeviceInfo* info) noexcept -> std::shared_ptr<CH341>;
 };
 } // namespace common::communication
+
+#endif

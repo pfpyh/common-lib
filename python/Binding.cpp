@@ -1,5 +1,5 @@
 #include "common/communication/Serial.hpp"
-#include "common/logging/Logger.hpp"
+#include "common/Logger.hpp"
 
 #include "hal/imu/MPU6050.hpp"
 #include "hal/imu/Imu.hpp"

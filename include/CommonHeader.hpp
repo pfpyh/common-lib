@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include <cassert>
 #include <atomic>
+#include <string>
 
 #if defined(WINDOWS)
     #ifdef BUILDING_COMMON_LIB

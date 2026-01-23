@@ -22,25 +22,29 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#pragma once
+#include "common/Logger.hpp"
 
-#include "CommonHeader.hpp"
-#include "common/communication/driver/BaseDriver.hpp"
+#include <iostream>
 
-namespace common::communication
+namespace common
 {
-struct SpiInfo : public DeviceInfo
+auto Logger::debug(const std::string& log) -> void
 {
-    enum Mode : uint8_t
-    {
-        Single  = 0,
-        Dual    = 4,
-    };
+    std::cout << "[DEBUG] " << log << std::endl;
+}
 
-    SpiInfo() 
-        : DeviceInfo(DeviceInfo::SPI) {}
-    
-    Mode _mode = Single;
-    uint8_t _address = 0x00;
-};
-} // namespace common::communication
+auto Logger::error(const std::string& log) -> void
+{
+    std::cout << "[ERROR] " << log << std::endl;
+}
+
+auto Logger::warn(const std::string& log) -> void
+{
+    std::cout << "[WARN] " << log << std::endl;
+}
+
+auto Logger::info(const std::string& log) -> void
+{
+    std::cout << "[INFO] " << log << std::endl;
+}
+} // namespace common

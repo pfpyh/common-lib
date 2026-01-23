@@ -24,26 +24,41 @@ SOFTWARE.
 
 #pragma once
 
-#include "CommonHeader.hpp"
-#include "common/communication/driver/BaseDriver.hpp"
+#include <queue>
+#include <stdint.h>
 
-namespace common::communication
+namespace common
 {
-struct I2CInfo : public DeviceInfo
+template <typename _tp, uint64_t _size>
+class SizedQueue
 {
-    enum Speed : uint32_t
-    {
-        Low         = 0x00, // 20KHz
-        Standard    = 0x01, // 100KHz (default)
-        Fast        = 0x02, // 400KHz
-        High        = 0x03, // 750KHz
-    };
+    static_assert(_size != 0, "Size of the buffer must be greater than zero.");
 
-    I2CInfo() 
-        : DeviceInfo(DeviceInfo::I2C) {}
+private :
+    std::queue<_tp> _q;
 
-    Speed _speed = Standard;
-    uint8_t _devAddr = 0x00;
-    uint8_t _regAddr = 0x00;
+public :
+    auto front() -> const _tp&
+    { 
+        return _q.front(); 
+    }
+
+    auto back() -> const _tp&
+    { 
+        return _q.back(); 
+    }
+
+    auto empty() -> bool { return _q.empty(); }
+    auto size() -> size_t { return _q.size(); }
+
+    auto push_back(const _tp& x) -> void { emplace_back(x); }
+    auto push_back(_tp&& x) -> void { emplace_back(std::move(x)); }
+    template <typename ...Args> auto push_back(Args&&... args) -> void { emplace_back(args...); }
+    template <typename ...Args> auto emplace_back(Args&&... args) -> void { 
+        if(_q.size() == _size) { _q.pop(); }
+        _q.emplace(args...); 
+    }
+
+    auto pop_front() -> void { _q.pop(); }
 };
-} // namespace common::communication
+} // namespace common
