@@ -74,6 +74,22 @@ public :
     }
 };
 
+class COMMON_LIB_API RuntimeException : public BaseException
+{
+public :
+    RuntimeException() = default;
+    RuntimeException(const std::string& detail)
+        : BaseException(detail) {}
+
+public :
+    const char* what() const noexcept override
+    {
+        const std::string what = _detail.empty() ? 
+            "runtime error" : "runtime error:" + _detail;
+        return what.c_str();
+    }
+};
+
 class COMMON_LIB_API OutOfRangeException : public BaseException
 {
 public :

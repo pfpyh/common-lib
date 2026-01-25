@@ -1,7 +1,7 @@
 /**********************************************************************
 MIT License
 
-Copyright (c) 2025 Park Younghwan
+Copyright (c) 2026 Park Younghwan
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -21,36 +21,39 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
+#pragma once
 
-#include <gtest/gtest.h>
+#include "common/communication/Event.hpp"
+#include "common/communication/Socket.hpp"
+#include "common/Logger.hpp"
 
-#include "common/communication/proxy/GenericEvent.hpp"
+#include <vector>
+#include <functional>
 
-namespace common::communication::test
+namespace common::communication
 {
-TEST(test_GenericEvent, DISABLED_publishTestMessage)
+using Bytes = std::vector<uint8_t>;
+using onMessage = std::function<void(Bytes)>;
+using onSubscribed = std::function<void()>;
+
+class EventTransport
 {
-    // given
-    struct DataType
+public :
+    virtual ~EventTransport() = default;
+    
+    virtual auto connect(const Connection& conn) -> void = 0;
+    virtual auto connected() -> bool = 0;
+    virtual auto disconnect() -> void = 0;
+    virtual auto publish([[maybe_unused]] const std::vector<uint8_t> bytes) -> void 
     {
-        int32_t _1 = 0;
-        int32_t _2 = 0;
-    };
-
-    GenericEventBus bus;
-    DataType data{100, -50};
-
-    // when
-    DataType recvData;
-    const auto subId = bus.subscribe<DataType>("Test", 
-                                               [&recvData](const DataType& data){
-        recvData = data;
-    });
-    bus.publish<DataType>("Test", data);
-    bus.unsubscribe(subId);
-
-    // then
-    ASSERT_EQ(recvData._1, data._1);
-    ASSERT_EQ(recvData._2, data._2);
-}
-} // namespace common::communication::test
+        LogError << "Default operation: publish";
+        if constexpr (STRICT_MODE_ENABLED) { std::abort(); }
+    }
+    virtual auto subscribe([[maybe_unused]] onMessage onMessageHandler,
+                           [[maybe_unused]] onSubscribed onSubscribedHandler = nullptr) -> void
+    {
+        LogError << "Default operation: subscribe";
+        if constexpr (STRICT_MODE_ENABLED) { std::abort(); }
+    }
+};
+} // namespace common::communication

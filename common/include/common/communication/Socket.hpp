@@ -34,6 +34,18 @@ SOFTWARE.
 
 namespace common::communication
 {
+struct Protocol
+{
+    enum type : uint8_t { TCP, UDP };
+};
+
+struct Connection
+{
+    Protocol::type _protocol;
+    std::string _address;
+    uint32_t _port;
+};
+
 class COMMON_LIB_API SocketType
 {
 public :
@@ -59,6 +71,8 @@ public :
     virtual auto prepare(const std::string& address, const int32_t port) -> void = 0;
     virtual auto open() -> void = 0;
     virtual auto close() -> void = 0;
+
+    virtual auto get_socket() noexcept -> int32_t = 0;
 
     virtual auto read(void* buffer, const size_t size) -> size_t = 0;
     virtual auto read(char* buffer, const size_t size) -> size_t = 0;
