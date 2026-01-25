@@ -26,15 +26,22 @@ message(STATUS "COMMON_LIB_EVENT_THREADS = ${EVENT_THREADS}")
 ###########################################################################
 
 # GoogleTest ##############################################################
-set(GTEST_ROOT ${CMAKE_CURRENT_LIST_DIR}/libs/googletest)
+set(GTEST_ROOT ${CMAKE_CURRENT_LIST_DIR}/extern/googletest)
 set(GTEST_INCLUDES ${GTEST_ROOT}/googletest/include
                    ${GTEST_ROOT}/googlemock/include)
 set(GTEST_LINKS ${CMAKE_CURRENT_BINARY_DIR}/lib)
 ###########################################################################
 
+# Boost.asio ##############################################################
+set(ASIO_ROOT ${CMAKE_CURRENT_LIST_DIR}/extern/asio)
+set(ASIO_INCLUDES ${BOOST_ASIO_ROOT}
+                  ${ASIO_ROOT}/include)
+###########################################################################
+
 set(INCLUDES ${CMAKE_CURRENT_LIST_DIR}/include
              ${CMAKE_CURRENT_LIST_DIR}
-             ${INCLUDES})
+             ${ASIO_INCLUDES}
+             ${BOOST_ASIO_INCLUDES})
 
 set(LINKS ${CMAKE_CURRENT_BINARY_DIR}
           ${CMAKE_CURRENT_BINARY_DIR}/Debug

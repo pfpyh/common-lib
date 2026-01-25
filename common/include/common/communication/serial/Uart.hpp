@@ -28,6 +28,7 @@ SOFTWARE.
 #include "common/Factory.hpp"
 
 #if defined(WINDOWS)
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #elif defined(LINUX)
 #include <fcntl.h>

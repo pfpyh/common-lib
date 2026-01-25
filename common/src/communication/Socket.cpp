@@ -53,8 +53,8 @@ private :
     std::string _address;
 
 protected :
-    auto get_fd() const -> int32_t { return _fd; }
-    auto set_fd(int32_t fd) -> void { _fd = fd; }
+    auto get_socket() noexcept -> int32_t override { return _fd; }
+    auto set_socket(int32_t fd) -> void { _fd = fd; }
     auto get_conn() const -> int32_t { return _conn; }
     auto set_conn(int32_t conn) -> void { _conn = conn; }
     auto get_port() const -> int32_t { return _port; }
@@ -76,8 +76,8 @@ public :
         }
     #endif
 
-        set_fd(socket(AF_INET, SOCK_STREAM, 0));
-        if(get_fd() == 0)
+        set_socket(socket(AF_INET, SOCK_STREAM, 0));
+        if(get_socket() == 0)
         {
             const int32_t errNo = errno;
             std::string what("Socket error:");
@@ -90,10 +90,10 @@ public :
     auto close() -> void override
     {
     #if defined(WIN32)
-        closesocket(get_fd());
+        closesocket(get_socket());
         WSACleanup();
     #elif defined(LINUX)
-        ::close(get_fd());
+        ::close(get_socket());
     #endif
     }
 
@@ -195,7 +195,7 @@ public :
 
     #if defined(LINUX)
         int32_t opt = 1;
-        if(::setsockopt(get_fd(), SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) < 0) 
+        if(::setsockopt(get_socket(), SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)) < 0) 
         {
             const int32_t errNo = errno;
             std::string what("Socket setsockopt error: ");
@@ -205,7 +205,7 @@ public :
         }
     #endif
 
-        if(::bind(get_fd(), reinterpret_cast<sockaddr*>(&addrIn), sizeof(addrIn)) < 0)
+        if(::bind(get_socket(), reinterpret_cast<sockaddr*>(&addrIn), sizeof(addrIn)) < 0)
         {
             const int32_t errNo = errno;
             std::string what("Server bind error: ");
@@ -215,9 +215,9 @@ public :
         }
 
     #if defined(WIN32)
-        if(::listen(get_fd(), SOMAXCONN) < 0)
+        if(::listen(get_socket(), SOMAXCONN) < 0)
     #elif defined(LINUX)
-        if(::listen(get_fd(), SOMAXCONN) < 0)
+        if(::listen(get_socket(), SOMAXCONN) < 0)
     #endif
         {
             const int32_t errNo = errno;
@@ -232,7 +232,7 @@ public :
     #elif defined(LINUX)
         socklen_t addrLen = sizeof(addrIn);
     #endif
-        set_conn(accept(get_fd(), reinterpret_cast<sockaddr*>(&addrIn), &addrLen));
+        set_conn(accept(get_socket(), reinterpret_cast<sockaddr*>(&addrIn), &addrLen));
         if(get_conn() < 0)
         {
             const int32_t errNo = errno;
@@ -271,7 +271,7 @@ public :
         }
     #endif
 
-        if (connect(get_fd(), reinterpret_cast<sockaddr*>(&addrIn), sizeof(addrIn)) < 0) 
+        if (connect(get_socket(), reinterpret_cast<sockaddr*>(&addrIn), sizeof(addrIn)) < 0) 
         {
             const int32_t errNo = errno;
             std::string what("Client connect error:");
@@ -281,7 +281,7 @@ public :
         }
         else
         {
-            set_conn(get_fd());
+            set_conn(get_socket());
         }
     }
 };

@@ -22,35 +22,21 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#include <gtest/gtest.h>
+#pragma once
 
-#include "common/communication/proxy/GenericEvent.hpp"
+#include "common/CommonHeader.hpp"
 
-namespace common::communication::test
+namespace common
 {
-TEST(test_GenericEvent, DISABLED_publishTestMessage)
+struct ErrorCode
 {
-    // given
-    struct DataType
+    enum type : uint8_t
     {
-        int32_t _1 = 0;
-        int32_t _2 = 0;
+        UNKNOWN,
+        CONNECTION_LOST,
+        RECEIVE_FAILURE,
+        SEND_FAILURE,
+        END_OF_FILE,
     };
-
-    GenericEventBus bus;
-    DataType data{100, -50};
-
-    // when
-    DataType recvData;
-    const auto subId = bus.subscribe<DataType>("Test", 
-                                               [&recvData](const DataType& data){
-        recvData = data;
-    });
-    bus.publish<DataType>("Test", data);
-    bus.unsubscribe(subId);
-
-    // then
-    ASSERT_EQ(recvData._1, data._1);
-    ASSERT_EQ(recvData._2, data._2);
-}
-} // namespace common::communication::test
+};
+} // namespace common

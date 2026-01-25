@@ -1,7 +1,7 @@
 /**********************************************************************
 MIT License
 
-Copyright (c) 2025 Park Younghwan
+Copyright (c) 2026 Park Younghwan
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -21,67 +21,104 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
-
 #pragma once
 
 #include "common/CommonHeader.hpp"
-
 #include "common/NonCopyable.hpp"
-#include "common/threading/TaskExecutor.hpp"
+#include "common/Factory.hpp"
+#include "common/communication/Socket.hpp"
 
-#include <string>
-#include <vector>
-#include <unordered_map>
-#include <stdint.h>
-#include <atomic>
+#include <memory>
 #include <shared_mutex>
+#include <vector>
 
 namespace common::communication
 {
-class COMMON_LIB_API EventBus final : public NonCopyable
+class EventTransport;
+
+/**
+ * @brief Template publisher for a single topic.
+ *
+ * Use the UniqueFactory interface to construct: @c EventPublisher<T>::create(conn, topic).
+ * @c DataType must provide @c operator<<(Bytes&, const DataType&) for serialization.
+ *
+ * @tparam DataType The event data type to publish.
+ */
+template <typename DataType>
+class EventPublisher : public NonCopyable
+                     , public UniqueFactory<EventPublisher<DataType>>
 {
-public :
-    using Topic = std::string;
-    using Payload = std::vector<uint8_t>;
-    using Handler = std::function<void(const Payload&)>;
-    using SubID = uint32_t;
-
-    struct HandlerInfo
-    {
-        SubID _subId;
-        Handler _handler;
-        std::atomic<bool> _active{true};
-
-        HandlerInfo(SubID subId, Handler handler)
-            : _subId(subId), _handler(handler) {}
-    };
-
-    using TopicData = std::vector<std::shared_ptr<HandlerInfo>>;
+    friend class UniqueFactory<EventPublisher<DataType>>;
 
 private :
-    std::shared_ptr<threading::TaskExecutor> _executor;
-    std::vector<std::shared_ptr<HandlerInfo>> _handlers;
-
-    std::shared_mutex _topicLock;
-    std::unordered_map<Topic, std::shared_ptr<TopicData>> _topics;
-
-    std::mutex _subscriptionLock;
-    std::unordered_map<SubID, std::weak_ptr<HandlerInfo>> _subscriptions;
-    std::atomic<uint8_t> _cleanupCount{0};
-
-public :
-    explicit EventBus(uint32_t threadCount = EVENT_THREADS);
-    ~EventBus();
-
-public :
-    auto finalize() -> void;
-
-    auto subscribe(const std::string& topic, Handler handler) -> SubID;
-    auto unsubscribe(SubID subId) -> void;
-
-    auto publish(const std::string& topic, const Payload& payload) -> void;
+    std::shared_ptr<EventTransport> _transport;
 
 private :
-    auto cleanup_unsubscribers() -> void;
+    explicit EventPublisher(std::shared_ptr<EventTransport>&& transport);
+
+public :
+    ~EventPublisher();
+
+public :
+    /// @brief Connects to the broker and makes the publisher ready to send.
+    /// @note Aborts in STRICT_MODE if already connected.
+    auto regist() -> void;
+
+    /// @brief Disconnects from the broker.
+    auto unregist() -> void;
+
+    /**
+     * @brief Serializes @p data and sends it as a DATA frame.
+     * @param data Event data to publish.
+     * @note Silently dropped if called before regist(). This is allowed even in STRICT_MODE.
+     */
+    auto publish(const DataType& data) -> void;
+
+private :
+    static auto __create(const Connection& conn, uint16_t topic) noexcept -> std::unique_ptr<EventPublisher>;
+};
+
+/**
+ * @brief Template subscriber for a single topic.
+ *
+ * Use the UniqueFactory interface to construct: @c EventSubscriber<T>::create(conn, topic).
+ * @c DataType must provide @c operator<<(DataType&, const Bytes&) for deserialization.
+ *
+ * @tparam DataType The event data type to receive.
+ */
+template <typename DataType>
+class EventSubscriber : public NonCopyable
+                      , public UniqueFactory<EventSubscriber<DataType>>
+                      , public std::enable_shared_from_this<EventSubscriber<DataType>>
+{
+    friend class UniqueFactory<EventSubscriber<DataType>>;
+
+private :
+    std::function<void(const DataType&)> _handler;
+    std::shared_ptr<EventTransport> _transport;
+
+public :
+    explicit EventSubscriber(std::shared_ptr<EventTransport>&& transport);
+    virtual ~EventSubscriber();
+
+public :
+    /**
+     * @brief Connects to the broker, registers on the topic, and installs event handlers.
+     * @param onEventHandler Invoked on every DATA frame received for the subscribed topic.
+     * @param onSubscribedHandler Optional. Invoked once the broker sends an ACK, ensuring
+     *                            subsequent publishes will be delivered. Defaults to nullptr.
+     * @note Aborts in STRICT_MODE if already connected.
+     */
+    auto subscribe(std::function<void(const DataType& data)> onEventHandler,
+                   std::function<void()> onSubscribedHandler = nullptr) -> void;
+
+    /// @brief Disconnects from the broker and stops receiving events.
+    auto unsubscribe() -> void;
+
+private :
+    static auto __create(const Connection& conn, uint16_t topic) noexcept -> std::unique_ptr<EventSubscriber>;
 };
 } // namespace common::communication
+
+#include "impl/EventPublisher.ipp"
+#include "impl/EventSubscriber.ipp"

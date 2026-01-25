@@ -1,7 +1,7 @@
 /**********************************************************************
 MIT License
 
-Copyright (c) 2025 Park Younghwan
+Copyright (c) 2026 Park Younghwan
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,43 +22,42 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 **********************************************************************/
 
-#pragma once
-
-#include <cassert>
-#include <atomic>
-#include <string>
-#include <vector>
-
-using Bytes = std::vector<uint8_t>;
-
 #if defined(WINDOWS)
-    #ifdef BUILDING_COMMON_LIB
-        #define COMMON_LIB_API __declspec(dllexport)
-    #else
-        #define COMMON_LIB_API __declspec(dllimport)
-    #endif
-#else
-    #ifndef COMMON_LIB_API
-        #define COMMON_LIB_API
-    #endif
-#endif
+#include "common/Singleton.hpp"
 
-#define SINGLE_INSTANCE_ONLY(ClassName) \
-private: \
-    static inline std::atomic<bool> _isSingleInstance{false}; \
-    class InstanceGuard \
-    { \
-    public: \
-        InstanceGuard() \
-        { \
-            bool expected = false; \
-            if (!ClassName::_isSingleInstance.compare_exchange_strong(expected, true)) { \
-                assert(false && #ClassName " can be created only once!"); \
-                std::terminate(); \
-            } \
-        } \
-        ~InstanceGuard() \
-        { \
-            ClassName::_isSingleInstance.store(false); \
-        } \
-    } _instanceGuard;
+#include <mutex>
+
+namespace common::detail
+{
+struct RegistryEntry
+{
+    std::once_flag flag;
+    std::shared_ptr<void> instance;
+};
+
+auto SingletonRegistry::get(std::type_index type,
+                            std::function<std::shared_ptr<void>()> factory) -> std::shared_ptr<void>
+{
+    static std::mutex registry_mutex;
+    static std::unordered_map<std::type_index, std::shared_ptr<RegistryEntry>> registry;
+
+    std::shared_ptr<RegistryEntry> entry;
+    {
+        std::lock_guard<std::mutex> lock(registry_mutex);
+        auto it = registry.find(type);
+        if(it == registry.end())
+        {
+            entry = std::make_shared<RegistryEntry>();
+            registry[type] = entry;
+        }
+        else { entry = it->second; }
+    }
+
+    std::call_once(entry->flag, [&]() {
+        entry->instance = factory();
+    });
+
+    return entry->instance;
+}
+} // namespace common::detail
+#endif
