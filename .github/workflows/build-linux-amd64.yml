@@ -1,0 +1,31 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main", "dev/0.0.2" ]
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  build-linux-amd64-job:
+    runs-on: linux-amd64
+    container:
+      image: ghcr.io/pfpyh/cpp-dev-env-image:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: fetch
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Build
+        run: |
+          mkdir build
+          cmake -B build .
+          cmake --build build -j2
+          ctest --test-dir build/ --output-on-failure --timeout 60 --schedule-random -j2
