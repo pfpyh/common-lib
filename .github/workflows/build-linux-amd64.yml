@@ -27,5 +27,9 @@ jobs:
         run: |
           mkdir build
           cmake -B build .
+<<<<<<< HEAD
           cmake --build build -j2
           ctest --test-dir build/ --output-on-failure --timeout 60 --schedule-random -j2
+=======
+          cmake --build build
+>>>>>>> 281b1fc (Git action)
