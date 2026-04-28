@@ -1,0 +1,9 @@
+[submodule "extern/googletest"]
+	path = extern/googletest
+	url = https://github.com/pfpyh/common-ext-googletest
+[submodule "extern/flatbuffers"]
+	path = extern/flatbuffers
+	url = https://github.com/pfpyh/common-ext-flatbuffers
+[submodule "extern/asio"]
+	path = extern/asio
+	url = https://github.com/pfpyh/common-ext-asio.git
