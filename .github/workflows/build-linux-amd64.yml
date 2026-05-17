@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [ "main", "dev/0.0.2" ]
+    branches: [ "main", "dev/**" ]
 
 permissions:
   contents: read
