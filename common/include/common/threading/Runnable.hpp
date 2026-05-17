@@ -56,6 +56,12 @@ private :
     std::string _name;
 
 public :
+    virtual ~Runnable() noexcept 
+    { 
+        stop();
+        if(_t) { _t->join(); } 
+    };
+
     /**
      * @brief Start a new thread and call __work() in the thread continuously.
      * 
@@ -229,6 +235,12 @@ private :
     std::string _name;
 
 public :
+    virtual ~ActiveRunnable() noexcept 
+    { 
+        stop();
+        if(_t) { _t->join(); } 
+    };
+
     /**
      * @brief Start a new thread and call __work() in the thread continuously with the data that is passed by notify() function.
      * 
