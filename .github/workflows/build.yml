@@ -56,3 +56,19 @@ jobs:
           name: coverage-report
           path: build/coverage/html/
           retention-days: 7
+
+  build-windows:
+    runs-on: windows-latest
+    continue-on-error: true
+
+    steps:
+      - name: fetch
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Build
+        run: |
+          cmake -B build .
+          cmake --build build --config Release -j2
+          ctest --test-dir build/ -C Release --output-on-failure --timeout 60 --schedule-random -j2
