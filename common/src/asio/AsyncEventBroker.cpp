@@ -26,6 +26,7 @@ SOFTWARE.
 #include "common/communication/EventFrame.hpp"
 #include "common/Logger.hpp"
 
+#include <algorithm>
 #include <mutex>
 
 namespace common::asio

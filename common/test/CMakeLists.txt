@@ -41,5 +41,9 @@ else()
     message(STATUS "Cross-compiling detected. Skipping CTest registration for ${TARGET_NAME}.")
 endif()
 
-# add_subdirectory(application)
+if(ENABLE_COVERAGE)
+    include(../../cmake/CodeCoverage.cmake)
+    target_enable_coverage(${TARGET_NAME})
+    target_enable_coverage(common-lib)   # 라이브러리도 계측 대상에 포함
+endif()
 

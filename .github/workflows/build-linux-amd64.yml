@@ -12,14 +12,14 @@ jobs:
   build-linux-amd64-job:
     runs-on: linux-amd64
     container:
-      image: ghcr.io/pfpyh/cpp-dev-env-image:latest
+      image: ghcr.io/pfpyh/dev-linux-amd64:latest
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: fetch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
           fetch-depth: 0
@@ -29,3 +29,30 @@ jobs:
           cmake -B build .
           cmake --build build -j2
           ctest --test-dir build/ --output-on-failure --timeout 60 --schedule-random -j2
+
+  coverage-linux-amd64-job:
+    needs: build-linux-amd64-job
+    runs-on: linux-amd64
+    container:
+      image: ghcr.io/pfpyh/dev-linux-amd64:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: fetch
+        uses: actions/checkout@v5
+        with:
+          submodules: recursive
+          fetch-depth: 0
+      - name: Build
+        run: |
+          mkdir build
+          cmake -B build -DENABLE_COVERAGE=ON -DCMAKE_BUILD_TYPE=Debug
+          cmake --build build -t coverage -j2
+      - name: Upload
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: build/coverage/html/
+          retention-days: 7

@@ -32,6 +32,14 @@ set(GTEST_INCLUDES ${GTEST_ROOT}/googletest/include
 set(GTEST_LINKS ${CMAKE_CURRENT_BINARY_DIR}/lib)
 ###########################################################################
 
+# Coverage ##############################################################
+option(ENABLE_COVERAGE "Enable code coverage reporting" OFF)
+if(ENABLE_COVERAGE)
+    include(cmake/CodeCoverage.cmake)
+    message(STATUS "Code coverage enabled")
+endif()
+########################################################################
+
 # Boost.asio ##############################################################
 set(ASIO_ROOT ${CMAKE_CURRENT_LIST_DIR}/extern/asio)
 set(ASIO_INCLUDES ${BOOST_ASIO_ROOT}
@@ -63,3 +71,7 @@ enable_testing()
 add_subdirectory(common)
 add_subdirectory(extension)
 add_subdirectory(extern)
+
+if(ENABLE_COVERAGE)
+    add_coverage_target(DEPENDS test-common-lib)
+endif()

@@ -29,6 +29,7 @@ SOFTWARE.
 
 #include "common/Logger.hpp"
 
+#include <algorithm>
 #include <thread>
 #include <exception>
 #include <memory>
