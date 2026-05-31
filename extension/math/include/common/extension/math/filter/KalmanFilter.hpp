@@ -34,7 +34,7 @@ SOFTWARE.
 namespace common::math
 {
 template <typename T>
-class COMMON_LIB_API KalmanFilter
+class KalmanFilter
 {
 private :
     const T _Q;
@@ -66,7 +66,7 @@ public :
 };
 
 template <typename T>
-class COMMON_LIB_API KalmanFilter<Matrix<T>>
+class KalmanFilter<Matrix<T>>
 {
 private :
     Matrix<T> _H;

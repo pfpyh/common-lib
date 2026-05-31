@@ -29,7 +29,7 @@ SOFTWARE.
 namespace common::math
 {
 template <typename T>
-class COMMON_LIB_API LowPassFilter
+class LowPassFilter
 {
 private:
     T _prev;

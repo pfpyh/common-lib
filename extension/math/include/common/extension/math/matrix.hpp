@@ -65,7 +65,7 @@ auto inverse(const Matrix<T>& mat) -> Matrix<T>;
 } // namespace util
 
 template <typename T>
-class COMMON_LIB_API Matrix
+class Matrix
 {
 private :
     T** _mat = nullptr;
